@@ -1,0 +1,59 @@
+// DocuFit - Prisma schema
+// 원칙: 이 DB에는 이미지 "내용"이 절대 저장되지 않는다. 오직 S3 키와 메타데이터만 저장한다.
+// 모든 레코드는 expiresAt(생성 후 1시간)이 지나면 cleanup 잡이 S3 객체와 함께 삭제한다.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// ORIGINAL: 사용자가 업로드한 원본(서버 처리 경로를 사용할 때만 생성)
+/// RESULT:   sharp 압축/PDF 변환을 거친 최종 결과물
+enum AssetKind {
+  ORIGINAL
+  RESULT
+}
+
+/// PENDING: S3 업로드 진행 중, READY: 다운로드 가능, DELETED: 파기 완료(감사 목적 소프트 마킹 후 하드 삭제)
+enum AssetStatus {
+  PENDING
+  READY
+  DELETED
+}
+
+model FileAsset {
+  id        String      @id @default(cuid())
+  /// 익명 세션 ID (httpOnly 쿠키). 회원 개념 없음. 개인 식별 정보 아님.
+  sessionId String
+  kind      AssetKind
+  status    AssetStatus @default(PENDING)
+
+  s3Key     String @unique
+  mimeType  String
+  sizeBytes Int
+  width     Int?
+  height    Int?
+
+  createdAt DateTime  @default(now())
+  /// 이 시각 이후에는 무조건 삭제 대상. 기본값은 createdAt + 60분 (애플리케이션에서 계산).
+  expiresAt DateTime
+  deletedAt DateTime?
+
+  @@index([expiresAt])
+  @@index([sessionId])
+}
+
+/// cleanup 잡 실행 기록. "정말 지워졌는가"를 검증할 수 있게 남기는 감사 로그.
+model CleanupRun {
+  id           String   @id @default(cuid())
+  ranAt        DateTime @default(now())
+  scannedCount Int
+  deletedCount Int
+  failedCount  Int
+  durationMs   Int
+  error        String?
+}

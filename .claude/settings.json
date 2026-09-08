@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["scripts/session-context.mjs"],
+            "timeout": 15,
+            "statusMessage": "DocuFit 작업 히스토리 불러오는 중..."
+          }
+        ]
+      }
+    ]
+  }
+}
