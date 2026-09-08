@@ -1,20 +1,34 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * 디자인 토큰 (docs/design 시안 기준). 라이트 테마 단일.
+ * - navy: 제목·주요 버튼. pass/fail: 용량 신호등. surface: 페이지 배경. panel: 카드 배경.
+ * Tailwind v4 는 @theme 변수를 유틸리티(bg-navy, text-pass ...)로 노출한다.
+ */
+@theme {
+  --color-surface: #f3f5f9;
+  --color-panel: #ffffff;
+  --color-line: #e3e7ee;
+  --color-ink: #1b2437;
+  --color-muted: #6b7486;
+  --color-navy: #1e2a44;
+  --color-navy-hover: #2b3a5e;
+  --color-accent: #2563eb;
+  --color-accent-soft: #e8f0fe;
+  --color-pass: #16a34a;
+  --color-pass-soft: #e7f6ec;
+  --color-warn: #d97706;
+  --color-warn-soft: #fdf3e2;
+  --color-fail: #dc2626;
+  --color-fail-soft: #fdecec;
+
+  --font-sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", ui-sans-serif,
+    system-ui, -apple-system, sans-serif;
+
+  --radius-card: 14px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic",
-    ui-sans-serif, system-ui, -apple-system, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--color-surface);
+  color: var(--color-ink);
 }

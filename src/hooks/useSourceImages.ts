@@ -49,6 +49,7 @@ type Action =
   | { type: "resolve"; id: string; image: SourceImage }
   | { type: "fail"; id: string; error: string }
   | { type: "remove"; id: string }
+  | { type: "move"; id: string; toIndex: number }
   | { type: "clear" }
   | { type: "dismissRejected" };
 
@@ -68,6 +69,15 @@ function reducer(state: State, action: Action): State {
       };
     case "remove":
       return { ...state, items: state.items.filter((it) => it.id !== action.id) };
+    case "move": {
+      const from = state.items.findIndex((it) => it.id === action.id);
+      const to = Math.max(0, Math.min(state.items.length - 1, action.toIndex));
+      if (from === -1 || from === to) return state;
+      const items = [...state.items];
+      const [moved] = items.splice(from, 1);
+      items.splice(to, 0, moved);
+      return { ...state, items };
+    }
     case "clear":
       return { items: [], rejected: [] };
     case "dismissRejected":
@@ -179,6 +189,12 @@ export function useSourceImages() {
     dispatch({ type: "clear" });
   }, []);
 
+  /**
+   * 항목 순서 변경. 순서는 Phase 2-3 이어붙이기/PDF 페이지 순서가 된다.
+   * `toIndex` 는 이동 후 위치. 범위를 벗어나면 양 끝으로 보정된다.
+   */
+  const move = useCallback((id: string, toIndex: number) => dispatch({ type: "move", id, toIndex }), []);
+
   const dismissRejected = useCallback(() => dispatch({ type: "dismissRejected" }), []);
 
   // 배열 identity 를 유지해야 하위 훅(useCompression 등)의 effect 가 매 렌더마다 돌지 않는다.
@@ -192,6 +208,7 @@ export function useSourceImages() {
     processingCount,
     addFiles,
     remove,
+    move,
     clear,
     dismissRejected,
   };

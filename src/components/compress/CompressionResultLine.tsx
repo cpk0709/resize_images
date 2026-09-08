@@ -12,13 +12,13 @@ interface CompressionResultLineProps {
   onDownload: () => void;
 }
 
-/** 이미지 카드 하단에 붙는 압축 상태 한 줄. 결과가 없으면 아무것도 그리지 않는다. */
+/** 서류 카드 하단에 붙는 압축 상태 한 줄. 결과가 없으면 아무것도 그리지 않는다. */
 export function CompressionResultLine({ image, entry, targetMB, onDownload }: CompressionResultLineProps) {
   if (!entry) return null;
 
   if (entry.status === "working") {
     return (
-      <p className="mt-1 animate-pulse text-xs text-blue-600 dark:text-blue-400" aria-live="polite">
+      <p className="mt-1 animate-pulse text-xs font-medium text-accent" aria-live="polite">
         최적화 중…
       </p>
     );
@@ -26,7 +26,7 @@ export function CompressionResultLine({ image, entry, targetMB, onDownload }: Co
 
   if (entry.status === "error") {
     return (
-      <p className="mt-1 text-xs text-red-600 dark:text-red-400" role="alert">
+      <p className="mt-1 text-xs text-fail" role="alert">
         {entry.error}
       </p>
     );
@@ -40,21 +40,22 @@ export function CompressionResultLine({ image, entry, targetMB, onDownload }: Co
 
   return (
     <div className="mt-1 space-y-0.5 text-xs">
-      <p className="text-neutral-700 dark:text-neutral-300">
-        → <strong>{formatBytes(result.blob.size)}</strong> ({reductionLabel}) · {result.width}×{result.height}
-        {result.quality !== null && ` · 품질 ${Math.round(result.quality * 100)}`}
+      <p className={result.fitsTarget ? "text-pass" : "text-fail"}>
+        → <strong>{formatBytes(result.blob.size)}</strong> ({reductionLabel})
         <button
           type="button"
-          onClick={onDownload}
-          className="ml-2 rounded border border-neutral-300 px-2 py-0.5 font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDownload();
+          }}
+          className="ml-2 rounded border border-line bg-panel px-2 py-0.5 font-medium text-ink hover:bg-surface"
         >
           다운로드
         </button>
       </p>
       {!result.fitsTarget && (
-        <p className="text-amber-700 dark:text-amber-400" role="alert">
-          최소 해상도까지 줄여도 {targetMB}MB({formatBytes(targetMB * MB)}) 를 넘습니다. 목표 용량을 늘리거나 JPG 를
-          선택해 보세요.
+        <p className="text-warn" role="alert">
+          최소 해상도까지 줄여도 {formatBytes(targetMB * MB, 1)} 를 넘습니다. 목표를 늘리거나 JPG 를 선택해 보세요.
         </p>
       )}
     </div>

@@ -1,37 +1,35 @@
-import { Uploader } from "@/components/uploader/Uploader";
-import { DEFAULT_TARGET_SIZE_MB, TARGET_SIZE_PRESETS_MB } from "@/lib/constants";
+import { Studio } from "@/components/studio/Studio";
 
+/**
+ * 스튜디오 레이아웃 (docs 디자인 시안):
+ *   헤더(로고 + 프라이버시 배지) / 3열: 컨트롤 패널 · 편집 캔버스 · 병합·가리기 미리보기 / 푸터(파기 안내)
+ * 헤더·푸터는 정적이라 서버 컴포넌트로 두고, 상호작용은 전부 <Studio /> 안에 있다.
+ */
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center px-6 py-16">
-      <section className="w-full max-w-2xl text-center">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">DocuFit</h1>
-        <p className="mt-3 text-base text-neutral-600 dark:text-neutral-400">
-          관공서 제출용 서류 이미지, 회원가입 없이 바로 최적화하세요.
+    <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-5 px-5 py-6 sm:px-8">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-3xl font-extrabold tracking-tight text-navy">DocuFit</h1>
+          <span aria-hidden="true" className="h-6 w-px bg-line" />
+          <p className="text-lg font-medium text-ink">관공서 서류 최적화 스튜디오</p>
+        </div>
+        <p className="rounded-xl border border-pass/40 bg-pass-soft px-4 py-2 text-base font-bold text-pass">
+          🔒 100% 브라우저 자체 처리 (데이터 안심)
         </p>
+      </header>
 
-        <ul className="mt-8 grid gap-3 text-left text-sm sm:grid-cols-3">
-          <li className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-            <strong className="block">HEIC → JPG / PDF</strong>
-            아이폰 사진을 브라우저에서 바로 변환
-          </li>
-          <li className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-            <strong className="block">목표 용량 맞춤</strong>
-            {TARGET_SIZE_PRESETS_MB.join(" / ")}MB 이하로 자동 압축 (기본 {DEFAULT_TARGET_SIZE_MB}MB)
-          </li>
-          <li className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-            <strong className="block">이어붙이기 & 가리기</strong>
-            여러 장을 한 파일로, 주민번호는 검게 가리기
-          </li>
-        </ul>
+      <main className="grid flex-1 gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,1fr)]">
+        <Studio />
+      </main>
 
-        <Uploader />
-
-        <p className="mt-8 text-xs text-neutral-500">
-          🔒 기본적으로 모든 처리는 브라우저 안에서 끝나며, 서버 처리를 선택한 경우에도 파일은 1시간 뒤 완전
-          삭제됩니다.
+      <footer className="pb-2 text-center">
+        <p className="text-base font-bold">데이터 파기 안내</p>
+        <p className="mt-1 text-sm text-muted">
+          🛡️ 모든 변환은 이 브라우저 안에서 끝나며 파일은 서버로 전송되지 않습니다. 탭을 닫으면 남는 것이 없습니다.
+          서버 처리 옵션을 사용하는 경우에만 결과 파일이 저장되고, 그 파일은 1시간 뒤 자동 삭제됩니다.
         </p>
-      </section>
-    </main>
+      </footer>
+    </div>
   );
 }
