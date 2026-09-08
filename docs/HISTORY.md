@@ -9,8 +9,9 @@
 
 ## 현재 상태
 
-- **Phase:** 2-1(업로더) 완료 → Phase 2-2(목표 용량 압축) 시작 전
-- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-08 세션 4). Chrome 헤드리스(CDP) 스모크로 업로드 흐름 검증. HEIC 실파일 테스트는 미완 (이 PC 에 샘플 없음)
+- **Phase:** 2-2(목표 용량 압축) 완료 → Phase 2-3(이어붙이기·PDF) 시작 전. **핵심 사용 사례(HEIC/대용량 → 10MB 이하 JPG 다운로드)가 동작하는 상태.**
+- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-08 세션 5). Chrome 헤드리스(CDP) 스모크로 업로드→압축→다운로드 검증. HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
+- **스모크 테스트 자산 위치:** `%TEMP%\docufit-smoke\` (cdp-compress.mjs, 테스트 이미지). `.next/` 아래에 두면 `next build` 가 지운다.
 - **로컬에서 아직 안 한 것:** DB 마이그레이션(`prisma migrate dev --name init`), S3 자격증명 연결. 로컬 `.env` 에는 CRON_SECRET 만 채워져 있음
 - **프로덕션에서 재확인할 것:** `Cache-Control: no-store` 헤더 (dev 모드에서는 Next 가 덮어써 확인 불가)
 - **원격 저장소:** `https://github.com/cpk0709/resize_images.git` (origin, 브랜치 main)
@@ -20,8 +21,7 @@
 Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한다. 각 소단계가 끝나면 로컬에서 직접 눌러볼 수 있어야 한다.
 
 1. **HEIC 실파일 검증** 아이폰 사진(HEIC)을 실제로 올려 변환·썸네일·"HEIC → JPG 변환됨" 배지를 확인. 실패 시 `src/lib/image/heic.ts` 부터 본다.
-2. **Phase 2-2 목표 용량 압축** 2/5/10/20MB 프리셋, JPG/PNG 선택, 캔버스 재인코딩 (quality 이진 탐색 → 해상도 0.85배 축소), `<a download>` 저장. 완료 기준: 30MB 사진 → 10MB 이하 JPG 다운로드. 여기까지 네트워크 요청 0건.
-3. **Phase 2-3 이어붙이기** 순서 드래그 정렬, 세로/가로, 하나의 이미지 또는 PDF(pdf-lib) 내보내기. 완료 기준: 계약서 3장 → PDF 1개.
+2. **Phase 2-3 이어붙이기** 순서 드래그 정렬, 세로/가로, 하나의 이미지 또는 PDF(pdf-lib) 내보내기. 완료 기준: 계약서 3장 → PDF 1개.
 4. **Phase 2-4 에디터** fabric 캔버스로 크롭, 검은 박스 가리기, 모자이크 브러시. 완료 기준: 주민번호 가린 신분증 내보내기.
 5. **Phase 3 서버 폴백 (선택)** 캔버스 한계 초과 시 동의 후 가리기 끝난 결과만 sharp 로 압축, S3 + 10분 presigned + 60분 파기. 미결 결정 1 에 따라 Phase 2 출시 후로 미룰 수 있음.
 6. **Phase 4 배포** 배포 대상 결정, 프로덕션 `no-store` 확인, 개인정보처리방침 페이지, 접속 로그 보관 정책, (폴백 사용 시) 크론 실동작 검증 + S3 Lifecycle.
@@ -36,6 +36,13 @@ Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한�
 ---
 
 ## 타임라인 (최신이 위)
+
+### 2026-09-08 · 세션 5 · Phase 2-2 목표 용량 압축 구현
+- **한 것:** `src/lib/image/compress.ts` (긴 변 4000px 상한 → JPEG quality [0.4, 0.95] 이진 탐색 → 실패 시 0.85배 축소 반복, 최소 긴 변 600px, OffscreenCanvas 우선·`<canvas>` 폴백, AbortSignal 취소, 항상 재인코딩해 EXIF 제거). `src/lib/image/download.ts` (`<a download>`, 파일명 `원본_docufit.ext`). `src/hooks/useCompression.ts` (순차 실행, 옵션 변경 시 결과 무효화, `forget/reset` 으로 Blob 해제). UI `src/components/compress/{CompressPanel,CompressionResultLine}.tsx`. `ImageList` 에 `renderExtra` 슬롯, `useSourceImages.readyImages` 를 useMemo 로. 상수 `TARGET_SIZE_MIN_MB/MAX_MB`, 타입 `RasterFormat`.
+- **결정:** (1) 결과 무효화·해제를 effect 가 아니라 명시적 함수(`changeTarget`, `forget`, `reset`)로. effect 내 setState 는 React 훅 린트에 걸리고 시점이 불명확. (2) 원본이 목표 이하여도 항상 재인코딩: EXIF(GPS 등) 제거가 부수 목적. (3) 실행은 명시적 "최적화 시작" 버튼. 옵션 바꿀 때마다 자동 재압축하면 저사양 기기 부담. (4) 알고리즘 튜닝 상수는 `compress.ts` 안에 둠(사용처 하나). 전역 constants 로 올리지 않음.
+- **문제/해결:** `.next/smoke/` 에 둔 테스트 이미지가 `next build` 로 0바이트가 되어 스모크가 "빈 파일" 로 실패 → 자산과 스크립트를 `%TEMP%\docufit-smoke\` 로 이동. `OffscreenCanvas` 미지원 브라우저에서 `instanceof` 가 ReferenceError 를 내는 코드 → `typeof` 가드 추가.
+- **검증(Chrome 헤드리스):** 10MB 노이즈 JPEG(최악 케이스) → 2MB 목표: 3400×2550, 품질 41, 2,076,186B (≤ 2MiB). 10MB 목표: 원본 해상도 유지, 품질 93. PNG 2MB 목표: 926×695 로 축소해 1.79MB. 3장 일괄 다운로드 파일 크기 전부 목표 이하. 브라우저 오류 0. 각 시나리오 1.6~2.1초. `tsc`/`lint`/`build` 통과.
+- **다음:** Phase 2-3 이어붙이기(순서 정렬, 세로/가로, 이미지·PDF 내보내기). HEIC 실파일 확인은 사용자 몫.
 
 ### 2026-09-08 · 세션 4 · Phase 2-1 업로더 구현
 - **한 것:** 순수 로직 `src/lib/image/{errors,types,detect,heic,decode,ingest}.ts` (형식 판별은 매직 바이트 우선, HEIC 는 `heic2any` 동적 import, 디코딩은 `createImageBitmap` + EXIF 회전 반영, `<img>` 폴백). 상태 훅 `src/hooks/useSourceImages.ts` (순차 큐, 중복·개수 제한, object URL 해제 레지스트리). UI `src/components/uploader/{Dropzone,ImageList,Uploader}.tsx`. `src/lib/format.ts` (formatBytes). 상수 `ACCEPT_ATTRIBUTE`, `MAX_INPUT_FILE_BYTES`(100MB), `MAX_INPUT_FILES`(30). 랜딩 페이지에 업로더 연결.
