@@ -9,9 +9,10 @@
 
 ## 현재 상태
 
-- **Phase:** 2-2(목표 용량 압축) 완료 → Phase 2-3(이어붙이기·PDF) 시작 전. **핵심 사용 사례(HEIC/대용량 → 10MB 이하 JPG 다운로드)가 동작하는 상태.**
-- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-08 세션 5). Chrome 헤드리스(CDP) 스모크로 업로드→압축→다운로드 검증. HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
-- **스모크 테스트 자산 위치:** `%TEMP%\docufit-smoke\` (cdp-compress.mjs, 테스트 이미지). `.next/` 아래에 두면 `next build` 가 지운다.
+- **Phase:** 2-2 완료 + **스튜디오 UI 리디자인 적용** (세션 6) → Phase 2-3(이어붙이기·PDF) 시작 전. 핵심 사용 사례(대용량 → 목표 용량 이하 JPG 다운로드)가 동작하는 상태.
+- **UI 기준:** `docs/design/studio-concept-v1.png` (Gemini 시안). 3열 스튜디오: 컨트롤 패널(프리셋·형식·신호등·CTA) / 편집 캔버스(드롭존·카드 덱) / 병합·가리기 미리보기(도구는 준비 중 표시). 라이트 테마 단일.
+- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-08 세션 6). Chrome 헤드리스(CDP) 스모크 19개 체크 전부 통과. HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
+- **스모크 테스트 자산 위치:** `%TEMP%\docufit-smoke\` (cdp-compress.mjs, cdp-studio.mjs, 테스트 이미지). `.next/` 아래에 두면 `next build` 가 지운다.
 - **로컬에서 아직 안 한 것:** DB 마이그레이션(`prisma migrate dev --name init`), S3 자격증명 연결. 로컬 `.env` 에는 CRON_SECRET 만 채워져 있음
 - **프로덕션에서 재확인할 것:** `Cache-Control: no-store` 헤더 (dev 모드에서는 Next 가 덮어써 확인 불가)
 - **원격 저장소:** `https://github.com/cpk0709/resize_images.git` (origin, 브랜치 main)
@@ -32,10 +33,19 @@ Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한�
 |---|---|
 | 서버 sharp 폴백 경로를 MVP 에 포함할까? | 포함하지 않음. 브라우저 전용으로 먼저 완성 |
 | 배포 대상은? (Vercel+S3 / Cloudflare+R2 / 자체 서버+MinIO) | 미정. 크론 간격 제약이 달라지므로 Phase 4 전에 결정 |
+| 제출처 프리셋 수치(정부24 10MB, 대법원 10MB, 홈택스 5MB)의 공식 근거 확정 | 검색 결과가 상충해 보수값 적용, `verified: false` 로 UI 에 "참고" 표시. 사용자가 실제 민원 화면에서 확인해 주면 `src/lib/presets.ts` 갱신 |
+| 다크 모드 지원 여부 | 시안이 라이트 전용이라 라이트 단일로 정리. 요청 시 토큰만 추가하면 됨 |
 
 ---
 
 ## 타임라인 (최신이 위)
+
+### 2026-09-08 · 세션 6 · 스튜디오 UI 리디자인 (Gemini 시안 적용)
+- **한 것:** 시안 `docs/design/studio-concept-v1.png` 를 저장소에 보관. `globals.css` 디자인 토큰(navy/pass/warn/fail/surface, 라이트 단일). `src/lib/presets.ts` 제출처 프리셋(정부24·대법원·홈택스·직접 설정, `verified` 플래그). 새 컴포넌트 `src/components/studio/{Studio,ControlPanel,PresetList,SizeMeter,CardDeck,PreviewPanel}.tsx`. `useSourceImages.move()` 순서 변경(HTML5 드래그 + ◀▶ 버튼 키보드 경로). `Dropzone` 은 파일 드래그(`Files`)에만 반응하도록 수정하고 클릭 영역 전체·키보드 열기 지원. `page.tsx` 헤더(배지)/3열 grid/푸터. 구 `Uploader`, `ImageList`, `CompressPanel` 삭제.
+- **결정:** (1) 신호등은 "가장 큰 파일 1장" 기준. 제한이 파일당이므로 그 한 장이 통과하면 전부 통과. 눈금 끝은 기준선 2배와 현재값 중 큰 쪽. (2) 프리셋 수치는 보수값 + "참고" 배지. 근거 없는 수치를 확정처럼 보이게 하지 않는다. (3) 병합·가리기 도구는 UI 자리만 잡고 "준비 중" 표시. 동작하지 않는 버튼을 살아 있는 것처럼 두지 않는다. (4) 선택 카드는 상태로 동기화하지 않고 렌더 시 `find ?? items[0]` 로 결정. (5) 라이트 테마 단일.
+- **문제/해결:** 카드 드래그가 드롭존을 하이라이트하는 간섭 → 드롭존은 `dataTransfer.types` 에 `Files` 가 있을 때만 반응, 카드는 커스텀 타입 `application/x-docufit-card`. 프리셋 이름이 잘려 보임 → 두 줄 레이아웃. 작은 이미지가 미리보기에서 과확대 → 원본 크기 상한.
+- **검증(Chrome 헤드리스, cdp-studio.mjs 19 체크):** 헤더/프리셋/빈 신호등/초기 비활성 버튼, 3장 업로드, 홈택스 선택 시 기준선 5MB·"초과 · 최적화 필요", 최적화 후 "통과 (합격)"·"3장 중 3장 통과", ▶ 버튼 순서 교체, 합성 DragEvent 로 3→1 이동, 카드 선택 시 미리보기 반영, 3장 일괄 다운로드(5,217,083B ≤ 5MiB), 브라우저 오류 0. `tsc`/`lint`/`build` 통과.
+- **다음:** Phase 2-3 이어붙이기(카드 덱 순서 → 세로/가로 병합 → 이미지/PDF). 미리보기 패널의 "세로/가로 병합" 자리에 들어간다.
 
 ### 2026-09-08 · 세션 5 · Phase 2-2 목표 용량 압축 구현
 - **한 것:** `src/lib/image/compress.ts` (긴 변 4000px 상한 → JPEG quality [0.4, 0.95] 이진 탐색 → 실패 시 0.85배 축소 반복, 최소 긴 변 600px, OffscreenCanvas 우선·`<canvas>` 폴백, AbortSignal 취소, 항상 재인코딩해 EXIF 제거). `src/lib/image/download.ts` (`<a download>`, 파일명 `원본_docufit.ext`). `src/hooks/useCompression.ts` (순차 실행, 옵션 변경 시 결과 무효화, `forget/reset` 으로 Blob 해제). UI `src/components/compress/{CompressPanel,CompressionResultLine}.tsx`. `ImageList` 에 `renderExtra` 슬롯, `useSourceImages.readyImages` 를 useMemo 로. 상수 `TARGET_SIZE_MIN_MB/MAX_MB`, 타입 `RasterFormat`.
