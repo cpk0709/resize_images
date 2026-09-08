@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { MAX_INPUT_FILES } from "@/lib/constants";
 import { ImageProcessingError, toUserMessage } from "@/lib/image/errors";
 import { fileIdentityKey, prepareSourceImage, releaseSourceImage } from "@/lib/image/ingest";
@@ -181,7 +181,8 @@ export function useSourceImages() {
 
   const dismissRejected = useCallback(() => dispatch({ type: "dismissRejected" }), []);
 
-  const readyImages = state.items.flatMap((it) => (it.image ? [it.image] : []));
+  // 배열 identity 를 유지해야 하위 훅(useCompression 등)의 effect 가 매 렌더마다 돌지 않는다.
+  const readyImages = useMemo(() => state.items.flatMap((it) => (it.image ? [it.image] : [])), [state.items]);
   const processingCount = state.items.filter((it) => it.status === "processing").length;
 
   return {

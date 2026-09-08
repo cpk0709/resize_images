@@ -8,11 +8,11 @@
 export type ImageErrorCode =
   | "EMPTY_FILE"
   | "FILE_TOO_LARGE"
-  | "TOO_MANY_FILES"
   | "UNSUPPORTED_FORMAT"
-  | "DUPLICATE_FILE"
   | "HEIC_CONVERSION_FAILED"
-  | "DECODE_FAILED";
+  | "DECODE_FAILED"
+  | "ENCODE_FAILED"
+  | "ABORTED";
 
 export class ImageProcessingError extends Error {
   readonly code: ImageErrorCode;

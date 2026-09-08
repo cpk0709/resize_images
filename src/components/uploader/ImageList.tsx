@@ -1,19 +1,22 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { UploadItem } from "@/hooks/useSourceImages";
 import { formatBytes } from "@/lib/format";
 
 interface ImageListProps {
   items: UploadItem[];
   onRemove: (id: string) => void;
+  /** 항목 메타 아래에 붙일 추가 내용 (압축 결과 등). 이 컴포넌트는 그 내용을 해석하지 않는다. */
+  renderExtra?: (item: UploadItem) => ReactNode;
 }
 
 /** 업로드 항목 카드 목록. 상태(처리 중 / 준비됨 / 실패)에 따라 썸네일 영역만 다르게 그린다. */
-export function ImageList({ items, onRemove }: ImageListProps) {
+export function ImageList({ items, onRemove, renderExtra }: ImageListProps) {
   if (items.length === 0) return null;
 
   return (
-    <ul className="grid gap-3 sm:grid-cols-2">
+    <ul className="grid gap-3 sm:grid-cols-2" data-testid="image-list">
       {items.map((item) => (
         <li
           key={item.id}
@@ -44,6 +47,7 @@ export function ImageList({ items, onRemove }: ImageListProps) {
                 {item.error}
               </p>
             )}
+            {renderExtra?.(item)}
           </div>
 
           <button

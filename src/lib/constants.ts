@@ -8,10 +8,15 @@ export const FILE_TTL_MS = 60 * 60 * 1000;
 /** 관공서 사이트에서 흔한 첨부 용량 제한 프리셋(MB). 슬라이더/버튼 UI에서 사용. */
 export const TARGET_SIZE_PRESETS_MB = [2, 5, 10, 20] as const;
 export const DEFAULT_TARGET_SIZE_MB = 10;
+/** 직접 입력 허용 범위(MB). 0.5MB 미만은 서류 판독이 어렵고, 50MB 초과는 제한을 두는 사이트가 없다. */
+export const TARGET_SIZE_MIN_MB = 0.5;
+export const TARGET_SIZE_MAX_MB = 50;
 
 /** 최종 다운로드 포맷. PRD 3.1 */
 export const OUTPUT_FORMATS = ["jpeg", "png", "pdf"] as const;
 export type OutputFormat = (typeof OUTPUT_FORMATS)[number];
+/** 캔버스로 직접 인코딩할 수 있는 래스터 포맷 (PDF 는 이 결과를 페이지로 감싼다) */
+export type RasterFormat = Exclude<OutputFormat, "pdf">;
 
 export const OUTPUT_MIME: Record<OutputFormat, string> = {
   jpeg: "image/jpeg",
