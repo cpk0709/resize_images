@@ -53,6 +53,24 @@ export const ACCEPTED_INPUT_EXTENSIONS = [
   "tiff",
 ] as const;
 
+/**
+ * `<input type="file" accept>` 에 넣는 문자열. MIME 과 확장자를 모두 나열해야
+ * Windows 탐색기(HEIC MIME 미등록)와 macOS Finder 양쪽에서 HEIC 가 선택 가능하다.
+ */
+export const ACCEPT_ATTRIBUTE = [
+  ...ACCEPTED_INPUT_MIME,
+  ...ACCEPTED_INPUT_EXTENSIONS.map((ext) => `.${ext}`),
+].join(",");
+
+/**
+ * 브라우저에서 받아들이는 파일 1개 상한. 48MP 아이폰 HEIC 가 10~15MB, ProRAW 급은 제외 대상.
+ * 서버 폴백 상한(env MAX_UPLOAD_MB)과는 별개다.
+ */
+export const MAX_INPUT_FILE_BYTES = 100 * 1024 * 1024;
+
+/** 한 번에 다룰 수 있는 이미지 수. 계약서 수십 장 수준이면 충분하고, 그 이상은 메모리 위험. */
+export const MAX_INPUT_FILES = 30;
+
 /** 이어붙이기 방향. PRD 3.3 */
 export const STITCH_DIRECTIONS = ["vertical", "horizontal"] as const;
 export type StitchDirection = (typeof STITCH_DIRECTIONS)[number];

@@ -1,3 +1,4 @@
+import { Uploader } from "@/components/uploader/Uploader";
 import { DEFAULT_TARGET_SIZE_MB, TARGET_SIZE_PRESETS_MB } from "@/lib/constants";
 
 export default function Home() {
@@ -24,13 +25,11 @@ export default function Home() {
           </li>
         </ul>
 
-        {/* Phase 2: 여기에 드래그 앤 드롭 업로더가 들어온다 */}
-        <div className="mt-10 rounded-xl border-2 border-dashed border-neutral-300 p-12 text-neutral-500 dark:border-neutral-700">
-          업로드 영역 (Phase 2 에서 구현)
-        </div>
+        <Uploader />
 
         <p className="mt-8 text-xs text-neutral-500">
-          🔒 파일은 서버에 저장되더라도 생성 후 1시간이 지나면 자동으로 완전 삭제됩니다.
+          🔒 기본적으로 모든 처리는 브라우저 안에서 끝나며, 서버 처리를 선택한 경우에도 파일은 1시간 뒤 완전
+          삭제됩니다.
         </p>
       </section>
     </main>
