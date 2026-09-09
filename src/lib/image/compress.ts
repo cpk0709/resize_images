@@ -1,4 +1,5 @@
 import { OUTPUT_MIME, type RasterFormat } from "@/lib/constants";
+import { drawScaled, encodeCanvas } from "@/lib/image/canvas";
 import { decodeToBitmap } from "@/lib/image/decode";
 import { ImageProcessingError } from "@/lib/image/errors";
 
@@ -165,51 +166,5 @@ function pickSmaller(a: CompressResult | null, b: CompressResult): CompressResul
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {
     throw new ImageProcessingError("ABORTED", "작업이 취소되었습니다.");
-  }
-}
-
-// ── 캔버스 ────────────────────────────────────────────────────────────
-
-type AnyCanvas = OffscreenCanvas | HTMLCanvasElement;
-
-/**
- * OffscreenCanvas 를 우선 쓴다. DOM 에 붙이지 않아 가볍고, `convertToBlob` 이 Promise 를 돌려준다.
- * 지원하지 않는 브라우저에서는 일반 <canvas> 로 폴백.
- */
-function createCanvas(width: number, height: number): AnyCanvas {
-  if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(width, height);
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  return canvas;
-}
-
-function drawScaled(bitmap: ImageBitmap, width: number, height: number): AnyCanvas {
-  const canvas = createCanvas(width, height);
-  // 두 캔버스 타입의 2D 컨텍스트는 여기서 쓰는 API(drawImage, imageSmoothing*)가 같다.
-  const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null;
-  if (!ctx) {
-    throw new ImageProcessingError(
-      "ENCODE_FAILED",
-      "이미지를 그릴 수 없습니다. 이미지가 너무 크거나 브라우저 메모리가 부족합니다.",
-    );
-  }
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  return canvas;
-}
-
-async function encodeCanvas(canvas: AnyCanvas, mime: string, quality?: number): Promise<Blob> {
-  try {
-    if (typeof OffscreenCanvas !== "undefined" && canvas instanceof OffscreenCanvas) {
-      return await canvas.convertToBlob({ type: mime, quality });
-    }
-    const element = canvas as HTMLCanvasElement;
-    const blob = await new Promise<Blob | null>((resolve) => element.toBlob(resolve, mime, quality));
-    if (!blob) throw new Error("toBlob returned null");
-    return blob;
-  } catch (cause) {
-    throw new ImageProcessingError("ENCODE_FAILED", "이미지를 저장 형식으로 변환하지 못했습니다.", { cause });
   }
 }
