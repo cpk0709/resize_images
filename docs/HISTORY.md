@@ -14,7 +14,7 @@
 - **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-09 세션 10). Chrome 헤드리스(CDP) 스모크: 스튜디오 30 + 에디터 30 + 병합/PDF 33 체크 통과. HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
 - **스모크 테스트 자산 위치:** `%TEMP%\docufit-smoke\` (cdp-compress.mjs, cdp-studio.mjs, cdp-editor.mjs, 테스트 이미지). `.next/` 아래에 두면 `next build` 가 지운다.
 - **로컬에서 아직 안 한 것:** DB 마이그레이션(`prisma migrate dev --name init`), S3 자격증명 연결. 로컬 `.env` 에는 CRON_SECRET 만 채워져 있음
-- **프로덕션에서 재확인할 것:** `Cache-Control: no-store` 헤더 (dev 모드에서는 Next 가 덮어써 확인 불가)
+- **프로덕션 헤더:** `next start` 로 실측 완료 (세션 11) — `no-store`, `nosniff`, `DENY`, `no-referrer` 적용. 실서비스 URL 에서 한 번 더 확인할 것.
 - **원격 저장소:** `https://github.com/cpk0709/resize_images.git` (origin, 브랜치 main)
 
 ## 다음 할 일 (우선순위 순)
@@ -22,7 +22,7 @@
 Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한다. 각 소단계가 끝나면 로컬에서 직접 눌러볼 수 있어야 한다.
 
 1. **HEIC 실파일 검증** 아이폰 사진(HEIC)을 실제로 올려 변환·썸네일·"HEIC → JPG 변환됨" 배지를 확인. 실패 시 `src/lib/image/heic.ts` 부터 본다.
-2. **Phase 4 배포 준비** 배포 대상 결정(미결 결정 2), 프로덕션 빌드에서 `Cache-Control: no-store` 확인, 개인정보처리방침 페이지, 접속 로그 보관 정책, 모바일 레이아웃 점검(3열 → 1열 스택), 사용자 실기기 테스트(HEIC 포함).
+2. **Phase 4 배포 실행** 사용자가 Vercel 에 배포(`vercel link && vercel --prod`) → 실서비스 URL 에서 `curl -sI <url> | grep -i cache-control` 로 `no-store` 확인 → 아이폰 HEIC 실기기 테스트 → `src/app/privacy/page.tsx` 3절에 호스팅 업체·접속 로그 보관 기간 기입. (헤더·개인정보 안내·크론 스케줄·README·모바일 레이아웃은 세션 11 에서 완료)
 3. **품질 후속(선택)** 병합 진행률 표시(현재는 스피너 문구만), 에디터 창 크기 변경 시 캔버스 재배치, 모자이크 블록 크기 조절, A4 비율 크롭 프리셋, PDF 페이지 여백 옵션.
 4. **Phase 3 서버 폴백 (선택)** 캔버스 한계 초과 시 동의 후 가리기 끝난 결과만 sharp 로 압축, S3 + 10분 presigned + 60분 파기. 미결 결정 1 에 따라 Phase 2 출시 후로 미룰 수 있음.
 5. **Phase 4 배포** 배포 대상 결정, 프로덕션 `no-store` 확인, 개인정보처리방침 페이지, 접속 로그 보관 정책, (폴백 사용 시) 크론 실동작 검증 + S3 Lifecycle.
@@ -32,13 +32,19 @@ Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한�
 | 질문 | 기본 가정 (답 없으면 이렇게 진행) |
 |---|---|
 | 서버 sharp 폴백 경로를 MVP 에 포함할까? | 포함하지 않음. 브라우저 전용으로 먼저 완성 |
-| 배포 대상은? (Vercel+S3 / Cloudflare+R2 / 자체 서버+MinIO) | 미정. 크론 간격 제약이 달라지므로 Phase 4 전에 결정 |
+| 배포 대상은? (Vercel+S3 / Cloudflare+R2 / 자체 서버+MinIO) | 기본 가정 **Vercel Hobby** (Phase 2 는 서버 의존 없음, 크론 매일 1회). 서버 경로(Phase 3)를 켤 때 Pro 또는 외부 스케줄러 재검토 |
 | 제출처 프리셋 기본 수치(정부24 10MB, 대법원 10MB, 홈택스 5MB)의 공식 근거 확정 | 검색 결과가 상충해 보수값 적용, `verified: false` 로 UI 에 "참고" 표시. 사용자는 목표 용량 섹션에서 언제든 덮어쓸 수 있음. 확인되면 `src/lib/presets.ts` 갱신 |
 | 다크 모드 지원 여부 | 시안이 라이트 전용이라 라이트 단일로 정리. 요청 시 토큰만 추가하면 됨 |
 
 ---
 
 ## 타임라인 (최신이 위)
+
+### 2026-09-09 · 세션 11 · Phase 4 배포 준비 (사용자 결정 불필요한 항목)
+- **한 것:** (1) 프로덕션 모드(`next build` + `next start -p 3002`) 헤더 실측: `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `X-Powered-By` 없음, 크론 미인증 401. (2) `src/app/privacy/page.tsx` 개인정보 처리 안내 — 수집하지 않는 것(계정·이미지·EXIF·쿠키·분석 스크립트), 브라우저 처리 설명, 호스팅 접속 로그 고지(업체·기간은 배포 확정 후 명시), 서버 처리 옵션(준비 중)의 약속, 프리셋 참고값 고지, 문의 경로. 푸터에 링크 + 소스 코드 링크. (3) `vercel.json` 크론을 Hobby 제한에 맞춰 매일 18:00 UTC 로 (서버 경로 미사용이므로 실질 영향 없음). (4) README "배포 (Vercel 기준)" 절. (5) 390px·820px 스크린샷으로 1열 스택 레이아웃 확인 — 수정 불필요.
+- **결정:** 배포 대상 기본 가정을 Vercel 로. Phase 2 는 서버 의존이 없어 환경변수 없이 배포 가능. Pro 플랜·외부 스케줄러는 서버 경로(Phase 3)를 켤 때 결정.
+- **검증:** 프로덕션 헤더 curl 실측, `/privacy` 200 + 본문 문구 확인, 스튜디오 스모크 모바일·태블릿 폭에서 0 실패, `tsc`/`lint`/`build` 통과.
+- **다음:** 사용자가 Vercel 배포 실행(`vercel link && vercel --prod`) 후 실서비스 URL 에서 헤더·HEIC 실기기 확인. 개인정보 안내 3절의 호스팅 업체·로그 기간 기입.
 
 ### 2026-09-09 · 세션 10 · 목표 용량 메뉴 복원 (기관 기본값 + 직접 설정 + 초기화)
 - **한 것:** 컨트롤 패널에 "목표 용량 (파일 1개당)" 섹션을 프리셋 바로 아래 항상 노출. 2/5/10/20MB 빠른 선택 + 직접 입력 + "기본값으로 초기화"(기본값과 다를 때만 활성). 프리셋 선택 → 기관 기본값 적용, 이후 사용자가 바꾸면 프리셋 선택은 유지되고 목표 용량만 달라지며 안내문에 "기본값 10 MB 대신 5 MB 를 사용합니다" 표시. "직접 설정" 프리셋을 "기타 기관 (직접 설정)" 으로 바꿔 기본 10MB 를 갖게 하고 `maxBytesPerFile` 을 non-null 로 단순화. `presetDefaultMB()` 추가.
