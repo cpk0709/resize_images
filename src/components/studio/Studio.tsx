@@ -8,18 +8,30 @@ import { PreviewPanel } from "@/components/studio/PreviewPanel";
 import type { SizeSample } from "@/components/studio/SizeMeter";
 import { Dropzone } from "@/components/uploader/Dropzone";
 import { useCompression } from "@/hooks/useCompression";
+import { useMergeExport } from "@/hooks/useMergeExport";
 import { useSourceImages } from "@/hooks/useSourceImages";
-import { MB } from "@/lib/constants";
+import { MB, type OutputFormat, type OutputLayout } from "@/lib/constants";
 import type { EditResult } from "@/lib/image/edit";
 import { DEFAULT_PRESET_ID, findPreset, SUBMISSION_PRESETS, type SubmissionPreset } from "@/lib/presets";
 
+const FORMAT_LABEL: Record<OutputFormat, string> = { jpeg: "JPG", png: "PNG", pdf: "PDF" };
+
 /**
  * 스튜디오 조립 컴포넌트. 세 패널(컨트롤 / 편집 캔버스 / 미리보기)을 page 의 grid 안에 형제로 렌더한다.
- * 훅 두 개와 프리셋·선택 상태를 연결하고 파생값(신호등 샘플, 주요 버튼 상태)을 계산한다. 표시는 각 패널이.
+ *
+ * 출력 경로는 둘이다.
+ * - 파일별 압축(useCompression): 저장 형식 JPG/PNG + 출력 방식 "개별 파일".
+ * - 병합 출력(useMergeExport): 그 외 (이어붙이기, 또는 PDF).
+ * 어느 쪽이 활성인지는 `merge.isActive` 가 결정하고, 신호등·주요 버튼·카드 결과 표시가 그에 따라 바뀐다.
  */
 export function Studio() {
   const source = useSourceImages();
+
+  const [format, setFormat] = useState<OutputFormat>("jpeg");
+  const [layout, setLayout] = useState<OutputLayout>("separate");
+
   const compression = useCompression(source.readyImages);
+  const merge = useMergeExport(source.readyImages, { layout, format, targetMB: compression.targetMB });
 
   const [presetId, setPresetId] = useState(DEFAULT_PRESET_ID);
   const preset = findPreset(presetId) ?? SUBMISSION_PRESETS[0];
@@ -28,14 +40,22 @@ export function Studio() {
   // 선택이 없거나 삭제됐으면 첫 항목을 보여준다. 상태로 동기화하지 않고 렌더 시점에 결정한다.
   const selectedItem = source.items.find((it) => it.id === selectedId) ?? source.items[0];
 
+  /** 편집 중인 카드와 시작 도구. 카드가 바뀌거나 삭제되면 편집을 닫는다. */
+  const [editing, setEditing] = useState<{ id: string; tool: EditorTool } | null>(null);
+  const editingTool = editing && selectedItem && editing.id === selectedItem.id ? editing.tool : null;
+
+  // 이어붙이기는 2장부터. 1장으로 줄어들면 개별 파일로 되돌린다.
+  const effectiveLayout: OutputLayout = source.readyImages.length < 2 ? "separate" : layout;
+
   const handleSelectPreset = (next: SubmissionPreset) => {
     setPresetId(next.id);
     if (next.maxBytesPerFile !== null) compression.changeTarget(next.maxBytesPerFile / MB);
   };
 
-  /** 편집 중인 카드와 시작 도구. 카드가 바뀌거나 삭제되면 편집을 닫는다. */
-  const [editing, setEditing] = useState<{ id: string; tool: EditorTool } | null>(null);
-  const editingTool = editing && selectedItem && editing.id === selectedItem.id ? editing.tool : null;
+  const handleFormatChange = (next: OutputFormat) => {
+    setFormat(next);
+    if (next !== "pdf") compression.changeFormat(next); // 파일별 압축 경로의 포맷. PDF 는 병합 경로가 담당.
+  };
 
   const handleRemove = (id: string) => {
     compression.forget(id);
@@ -55,7 +75,7 @@ export function Studio() {
   const applyEdit = (result: EditResult) => {
     if (!editing) return;
     source.replaceImage(editing.id, result);
-    compression.forget(editing.id); // 픽셀이 바뀌었으니 이전 압축 결과는 무효
+    compression.forget(editing.id); // 픽셀이 바뀌었으니 이전 압축 결과는 무효 (병합 결과는 서명으로 자동 무효)
     setEditing(null);
   };
   const restoreOriginal = () => {
@@ -64,25 +84,43 @@ export function Studio() {
     compression.forget(selectedItem.id);
   };
 
+  // ── 파생 상태: 신호등 샘플, 주요 버튼 ──
   const limitBytes = Math.round(compression.targetMB * MB);
-  const samples: SizeSample[] = source.readyImages.map((img) => {
-    const result = compression.entries[img.id]?.result;
-    return result
-      ? { id: img.id, name: img.originalName, bytes: result.blob.size, kind: "result" }
-      : { id: img.id, name: img.originalName, bytes: img.originalSize, kind: "original" };
-  });
+  const total = source.readyImages.length;
 
-  const primaryAction: PrimaryAction = compression.isRunning
-    ? { kind: "cancel", label: "취소", onClick: compression.cancel }
-    : compression.total === 0
-      ? { kind: "disabled", label: source.items.length > 0 ? "서류를 준비하는 중…" : "서류를 추가하세요" }
-      : compression.doneCount === compression.total
-        ? {
-            kind: "download",
-            label: `최적화 다운로드 (${compression.format === "jpeg" ? "JPG" : "PNG"}, ${compression.total}장)`,
-            onClick: compression.downloadAll,
-          }
-        : { kind: "run", label: "최적화 시작", onClick: compression.run };
+  const samples: SizeSample[] = merge.isActive
+    ? total === 0
+      ? []
+      : [
+          merge.entry?.result
+            ? { id: "merged", name: "병합 결과", bytes: merge.entry.result.blob.size, kind: "result" }
+            : { id: "merged", name: `${total}장 합계 (병합 전)`, bytes: source.readyImages.reduce((sum, img) => sum + img.blob.size, 0), kind: "original" },
+        ]
+    : source.readyImages.map((img) => {
+        const result = compression.entries[img.id]?.result;
+        return result
+          ? { id: img.id, name: img.originalName, bytes: result.blob.size, kind: "result" }
+          : { id: img.id, name: img.originalName, bytes: img.originalSize, kind: "original" };
+      });
+
+  const isRunning = merge.isActive ? merge.isRunning : compression.isRunning;
+
+  const primaryAction: PrimaryAction = (() => {
+    if (total === 0) return { kind: "disabled", label: source.items.length > 0 ? "서류를 준비하는 중…" : "서류를 추가하세요" };
+    if (merge.isActive) {
+      if (merge.isRunning) return { kind: "cancel", label: "취소", onClick: merge.cancel };
+      if (merge.entry?.status === "done") {
+        const pages = format === "pdf" ? `, ${merge.entry.result?.pageCount ?? 1}페이지` : "";
+        return { kind: "download", label: `최적화 다운로드 (${FORMAT_LABEL[format]}${pages})`, onClick: merge.download };
+      }
+      return { kind: "run", label: total > 1 ? `${total}장 병합 최적화 시작` : "최적화 시작", onClick: merge.run };
+    }
+    if (compression.isRunning) return { kind: "cancel", label: "취소", onClick: compression.cancel };
+    if (compression.doneCount === compression.total) {
+      return { kind: "download", label: `최적화 다운로드 (${FORMAT_LABEL[format]}, ${total}장)`, onClick: compression.downloadAll };
+    }
+    return { kind: "run", label: "최적화 시작", onClick: compression.run };
+  })();
 
   return (
     <>
@@ -92,11 +130,14 @@ export function Studio() {
         onSelectPreset={handleSelectPreset}
         targetMB={compression.targetMB}
         onTargetChange={compression.changeTarget}
-        format={compression.format}
-        onFormatChange={compression.changeFormat}
+        format={format}
+        onFormatChange={handleFormatChange}
+        layout={effectiveLayout}
+        onLayoutChange={setLayout}
+        imageCount={total}
         limitBytes={limitBytes}
         samples={samples}
-        isRunning={compression.isRunning}
+        isRunning={isRunning}
         progress={{ done: compression.doneCount, total: compression.total }}
         primaryAction={primaryAction}
       />
@@ -132,7 +173,7 @@ export function Studio() {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold">서류 카드 덱</h3>
             <span className="text-sm text-muted">
-              {source.readyImages.length}장 준비됨
+              {total}장 준비됨
               {source.processingCount > 0 && ` · ${source.processingCount}장 변환 중`}
               {" · 끌어서 순서 변경"}
             </span>
@@ -145,7 +186,8 @@ export function Studio() {
           onSelect={setSelectedId}
           onRemove={handleRemove}
           onMove={source.move}
-          entries={compression.entries}
+          // 병합 출력 중에는 파일별 결과가 의미 없으므로 카드에 표시하지 않는다.
+          entries={merge.isActive ? {} : compression.entries}
           targetMB={compression.targetMB}
           onDownload={compression.download}
           onEdit={startEdit}
@@ -154,13 +196,18 @@ export function Studio() {
 
       <PreviewPanel
         item={selectedItem}
-        entry={selectedItem ? compression.entries[selectedItem.id] : undefined}
+        entry={merge.isActive ? undefined : selectedItem ? compression.entries[selectedItem.id] : undefined}
         total={source.items.length}
         editingTool={editingTool}
         onStartEdit={(tool) => selectedItem && startEdit(selectedItem.id, tool)}
         onApplyEdit={applyEdit}
         onCancelEdit={() => setEditing(null)}
         onRestoreOriginal={restoreOriginal}
+        merge={
+          merge.isActive
+            ? { layout: effectiveLayout, format, imageCount: total, targetMB: compression.targetMB, entry: merge.entry, onDownload: merge.download }
+            : null
+        }
       />
     </>
   );

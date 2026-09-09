@@ -80,4 +80,16 @@ export const MAX_INPUT_FILES = 30;
 export const STITCH_DIRECTIONS = ["vertical", "horizontal"] as const;
 export type StitchDirection = (typeof STITCH_DIRECTIONS)[number];
 
+/**
+ * 출력 방식. separate = 파일마다 하나씩(PDF 면 페이지마다 하나씩), vertical/horizontal = 한 장으로 이어붙이기.
+ */
+export const OUTPUT_LAYOUTS = ["separate", ...STITCH_DIRECTIONS] as const;
+export type OutputLayout = (typeof OUTPUT_LAYOUTS)[number];
+
+/**
+ * 한 캔버스에 담을 픽셀 상한. Safari 는 약 16.7M(4096²) 을 넘는 캔버스를 조용히 비워 버린다.
+ * 이어붙이기 결과가 이보다 크면 전체를 비율대로 줄인다.
+ */
+export const MAX_CANVAS_PIXELS = 16_000_000;
+
 export const MB = 1024 * 1024;

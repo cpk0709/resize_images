@@ -1,5 +1,5 @@
 import { OUTPUT_MIME, type RasterFormat } from "@/lib/constants";
-import { drawScaled, encodeCanvas } from "@/lib/image/canvas";
+import { drawScaled, encodeCanvas, type DrawableSource } from "@/lib/image/canvas";
 import { decodeToBitmap } from "@/lib/image/decode";
 import { ImageProcessingError } from "@/lib/image/errors";
 
@@ -61,16 +61,22 @@ export interface CompressResult {
   encodeCount: number;
 }
 
-export async function compressToTarget(source: Blob, options: CompressOptions): Promise<CompressResult> {
+/**
+ * @param source Blob 이면 여기서 디코딩하고 해제한다. 비트맵/캔버스(예: 이어붙이기 결과)를 넘기면
+ *               재인코딩 없이 바로 압축하며, 해제는 호출자 책임이다.
+ */
+export async function compressToTarget(source: Blob | DrawableSource, options: CompressOptions): Promise<CompressResult> {
+  if (!(source instanceof Blob)) return compressDrawable(source, options);
+
   const bitmap = await decodeToBitmap(source);
   try {
-    return await compressBitmap(bitmap, options);
+    return await compressDrawable(bitmap, options);
   } finally {
     bitmap.close();
   }
 }
 
-async function compressBitmap(bitmap: ImageBitmap, options: CompressOptions): Promise<CompressResult> {
+async function compressDrawable(bitmap: DrawableSource, options: CompressOptions): Promise<CompressResult> {
   const t: CompressTuning = { ...DEFAULT_COMPRESS_TUNING, ...options.tuning };
   const mime = OUTPUT_MIME[options.format];
   const target = options.targetBytes;

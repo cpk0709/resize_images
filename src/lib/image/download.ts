@@ -20,6 +20,14 @@ export function buildOutputFilename(originalName: string, format: OutputFormat):
 }
 
 /**
+ * 병합 출력(여러 장 → 파일 하나)의 파일명. 원본 파일명을 섞지 않는다 (개인정보 가능성, 여러 개 중 무엇을 쓸지 애매).
+ * 예) 3장, pdf → "docufit_3장.pdf"
+ */
+export function buildMergedFilename(count: number, format: OutputFormat): string {
+  return `docufit_${count}장.${OUTPUT_EXTENSION[format]}`;
+}
+
+/**
  * `<a download>` 클릭으로 저장. object URL 은 클릭이 처리된 뒤 해제한다.
  * 즉시 revoke 하면 일부 브라우저(Safari)에서 다운로드가 시작되지 않는다.
  */

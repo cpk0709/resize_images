@@ -1,10 +1,23 @@
 "use client";
 
 import { ImageEditor, type EditorTool } from "@/components/editor/ImageEditor";
+import { MergeSummary } from "@/components/merge/MergeSummary";
 import type { CompressionEntry } from "@/hooks/useCompression";
+import type { MergeEntry } from "@/hooks/useMergeExport";
 import type { UploadItem } from "@/hooks/useSourceImages";
+import type { OutputFormat, OutputLayout } from "@/lib/constants";
 import { formatBytes } from "@/lib/format";
 import type { EditResult } from "@/lib/image/edit";
+
+/** 병합 출력이 활성일 때 요약 카드에 필요한 것들 */
+export interface MergePanelProps {
+  layout: OutputLayout;
+  format: OutputFormat;
+  imageCount: number;
+  targetMB: number;
+  entry: MergeEntry | null;
+  onDownload: () => void;
+}
 
 interface PreviewPanelProps {
   item: UploadItem | undefined;
@@ -17,6 +30,8 @@ interface PreviewPanelProps {
   onApplyEdit: (result: EditResult) => void;
   onCancelEdit: () => void;
   onRestoreOriginal: () => void;
+  /** 병합 출력(이어붙이기/PDF)이 활성이면 요약 카드를 보여준다. null 이면 파일별 출력 모드. */
+  merge: MergePanelProps | null;
 }
 
 /**
@@ -34,6 +49,7 @@ export function PreviewPanel({
   onApplyEdit,
   onCancelEdit,
   onRestoreOriginal,
+  merge,
 }: PreviewPanelProps) {
   const image = item?.image;
   const editing = editingTool !== null && image;
@@ -105,9 +121,16 @@ export function PreviewPanel({
 
       {!editing && (
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <ToolPlaceholder title="세로/가로 병합" phase="Phase 2-3">
-            카드 덱 순서대로 여러 장을 한 장 또는 PDF 로 이어붙입니다. 순서는 카드를 끌어서 바꿀 수 있습니다.
-          </ToolPlaceholder>
+          {merge ? (
+            <MergeSummary {...merge} />
+          ) : (
+            <div className="rounded-xl border border-dashed border-line p-4 text-sm">
+              <p className="font-semibold">이어붙이기 · PDF</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted">
+                컨트롤 패널에서 저장 형식을 PDF 로 바꾸거나 출력 방식을 이어붙이기로 고르면, 카드 덱 순서대로 파일 하나로 묶습니다.
+              </p>
+            </div>
+          )}
           <div className="rounded-xl border border-line p-4 text-sm">
             <p className="flex items-center justify-between font-semibold">
               민감정보 가리기 · 크롭 · 회전
@@ -147,14 +170,3 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ToolPlaceholder({ title, phase, children }: { title: string; phase: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-dashed border-line p-4 text-sm">
-      <p className="flex items-center justify-between font-semibold">
-        {title}
-        <span className="rounded bg-surface px-1.5 py-0.5 text-[11px] font-medium text-muted">{phase}</span>
-      </p>
-      <p className="mt-1 text-xs leading-relaxed text-muted">{children}</p>
-    </div>
-  );
-}

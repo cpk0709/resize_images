@@ -10,6 +10,8 @@ import { ImageProcessingError } from "@/lib/image/errors";
 
 export type AnyCanvas = OffscreenCanvas | HTMLCanvasElement;
 export type AnyContext2D = OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+/** drawImage 소스로 쓸 수 있고 크기를 아는 것. 디코딩된 비트맵 또는 우리가 만든 캔버스. */
+export type DrawableSource = ImageBitmap | AnyCanvas;
 
 export function createCanvas(width: number, height: number): AnyCanvas {
   if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(width, height);
@@ -31,13 +33,13 @@ export function getContext2D(canvas: AnyCanvas): AnyContext2D {
   return ctx;
 }
 
-/** 비트맵을 지정 크기로 고품질 리샘플링해 새 캔버스에 그린다. */
-export function drawScaled(bitmap: ImageBitmap, width: number, height: number): AnyCanvas {
+/** 소스를 지정 크기로 고품질 리샘플링해 새 캔버스에 그린다. */
+export function drawScaled(source: DrawableSource, width: number, height: number): AnyCanvas {
   const canvas = createCanvas(width, height);
   const ctx = getContext2D(canvas);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(bitmap, 0, 0, width, height);
+  ctx.drawImage(source, 0, 0, width, height);
   return canvas;
 }
 
