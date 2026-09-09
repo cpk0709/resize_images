@@ -64,10 +64,13 @@ const branch = sh("git rev-parse --abbrev-ref HEAD");
 if (branch) {
   const log = sh("git log --oneline -5");
   const dirty = sh("git status --porcelain");
-  const ahead = sh("git rev-list --count @{upstream}..HEAD 2>/dev/null");
-  const behind = sh("git rev-list --count HEAD..@{upstream} 2>/dev/null");
+  // stderr 는 sh() 가 이미 버린다. 셸 리다이렉트(2>/dev/null)를 쓰면 Windows cmd.exe 에서 명령 자체가 실패한다.
+  // upstream 이 없으면 git 이 실패해 빈 문자열이 온다. "0" 은 정상 값이므로 truthy 검사 대신 빈 문자열 검사.
+  const ahead = sh("git rev-list --count @{upstream}..HEAD");
+  const behind = sh("git rev-list --count HEAD..@{upstream}");
+  const hasUpstream = ahead !== "" && behind !== "";
   lines.push("## git");
-  lines.push(`- 브랜치: ${branch}` + (ahead || behind ? ` (upstream 대비 +${ahead || 0} / -${behind || 0})` : " (upstream 없음)"));
+  lines.push(`- 브랜치: ${branch}` + (hasUpstream ? ` (origin 대비 +${ahead} / -${behind})` : " (upstream 없음)"));
   if (log) lines.push("- 최근 커밋:", ...log.split("\n").map((l) => `  - ${l}`));
   lines.push(dirty ? `- 커밋되지 않은 변경 ${dirty.split("\n").length}건:\n${dirty.split("\n").slice(0, 15).map((l) => `  ${l}`).join("\n")}` : "- 워킹 트리 깨끗함");
   lines.push("");
