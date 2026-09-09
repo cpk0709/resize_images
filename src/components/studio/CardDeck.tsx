@@ -2,6 +2,7 @@
 
 import { useState, type DragEvent } from "react";
 import { CompressionResultLine } from "@/components/compress/CompressionResultLine";
+import type { EditorTool } from "@/components/editor/ImageEditor";
 import type { CompressionEntry } from "@/hooks/useCompression";
 import type { UploadItem } from "@/hooks/useSourceImages";
 import { formatBytes } from "@/lib/format";
@@ -17,6 +18,8 @@ interface CardDeckProps {
   entries: Record<string, CompressionEntry>;
   targetMB: number;
   onDownload: (image: SourceImage) => void;
+  /** 카드의 [가리기] [크롭] 칩. 해당 카드를 선택하고 그 도구로 에디터를 연다. */
+  onEdit: (id: string, tool: EditorTool) => void;
 }
 
 /** 드래그 중 dataTransfer 에 넣는 커스텀 타입. 파일 드롭(Files)과 구분하기 위함. */
@@ -27,7 +30,17 @@ export const CARD_DRAG_TYPE = "application/x-docufit-card";
  * - 마우스: 카드를 끌어 다른 카드 위에 놓으면 그 자리로 이동.
  * - 키보드: 카드의 ◀ ▶ 버튼. 드래그를 못 쓰는 사용자를 위한 동등한 경로.
  */
-export function CardDeck({ items, selectedId, onSelect, onRemove, onMove, entries, targetMB, onDownload }: CardDeckProps) {
+export function CardDeck({
+  items,
+  selectedId,
+  onSelect,
+  onRemove,
+  onMove,
+  entries,
+  targetMB,
+  onDownload,
+  onEdit,
+}: CardDeckProps) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
@@ -112,6 +125,7 @@ export function CardDeck({ items, selectedId, onSelect, onRemove, onMove, entrie
               {formatBytes(item.size)}
               {item.image && ` · ${item.image.width}×${item.image.height}`}
               {item.image?.convertedFromHeic && <span className="ml-1 rounded bg-pass-soft px-1 text-[10px] font-medium text-pass">HEIC→JPG</span>}
+              {item.edited && <span className="ml-1 rounded bg-accent-soft px-1 text-[10px] font-medium text-accent">편집됨</span>}
             </p>
             {item.status === "error" && (
               <p className="mt-1 text-xs text-fail" role="alert">
@@ -123,10 +137,10 @@ export function CardDeck({ items, selectedId, onSelect, onRemove, onMove, entrie
             )}
 
             <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px]">
-              <Chip disabled title="Phase 2-4 에서 제공">
+              <Chip disabled={!item.image} onClick={() => onEdit(item.id, "mask")}>
                 가리기
               </Chip>
-              <Chip disabled title="Phase 2-4 에서 제공">
+              <Chip disabled={!item.image} onClick={() => onEdit(item.id, "crop")}>
                 크롭
               </Chip>
               <span className="ml-auto flex gap-0.5">
@@ -161,14 +175,16 @@ function Thumbnail({ item }: { item: UploadItem }) {
   );
 }
 
-function Chip({ children, disabled, title }: { children: React.ReactNode; disabled?: boolean; title?: string }) {
+function Chip({ children, disabled, onClick }: { children: React.ReactNode; disabled?: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       disabled={disabled}
-      title={title}
-      onClick={(e) => e.stopPropagation()}
-      className="rounded border border-line px-1.5 py-0.5 text-muted disabled:cursor-not-allowed disabled:opacity-50"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="rounded border border-line px-1.5 py-0.5 text-muted hover:border-navy/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
     >
       [{children}]
     </button>

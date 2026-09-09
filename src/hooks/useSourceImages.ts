@@ -31,6 +31,16 @@ export interface UploadItem {
   error?: string;
   /** status === "ready" 일 때만 존재 */
   image?: SourceImage;
+  /** 크롭·가리기·회전이 적용된 상태. 원본은 훅이 따로 보관하며 `restoreOriginal` 로 되돌릴 수 있다. */
+  edited: boolean;
+}
+
+/** 편집 적용 후 교체되는 픽셀 데이터. 나머지 메타(이름, 원본 크기 등)는 유지된다. */
+export interface ReplacementImage {
+  blob: Blob;
+  mime: string;
+  width: number;
+  height: number;
 }
 
 /** 큐에 넣기 전에 거절된 파일. 목록에 남기지 않고 한 번 알려주기만 한다. */
@@ -48,6 +58,7 @@ type Action =
   | { type: "enqueue"; items: UploadItem[]; rejected: RejectedFile[] }
   | { type: "resolve"; id: string; image: SourceImage }
   | { type: "fail"; id: string; error: string }
+  | { type: "replace"; id: string; image: SourceImage; edited: boolean }
   | { type: "remove"; id: string }
   | { type: "move"; id: string; toIndex: number }
   | { type: "clear" }
@@ -66,6 +77,11 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         items: state.items.map((it) => (it.id === action.id ? { ...it, status: "error", error: action.error } : it)),
+      };
+    case "replace":
+      return {
+        ...state,
+        items: state.items.map((it) => (it.id === action.id ? { ...it, image: action.image, edited: action.edited } : it)),
       };
     case "remove":
       return { ...state, items: state.items.filter((it) => it.id !== action.id) };
@@ -93,6 +109,8 @@ interface RegistryEntry {
   identityKey: string;
   /** 준비가 끝난 뒤에만 존재. 제거 시 object URL 해제 대상. */
   image?: SourceImage;
+  /** 첫 편집 직전의 픽셀 데이터. 편집 전 상태로 되돌리기 위해 보관. 원본 File 과 별개 (HEIC 는 이미 JPEG 변환본). */
+  original?: ReplacementImage;
 }
 
 export function useSourceImages() {
@@ -138,7 +156,13 @@ export function useSourceImages() {
         rejected.push({ name: file.name, reason: `한 번에 최대 ${MAX_INPUT_FILES}장까지 추가할 수 있습니다.` });
         continue;
       }
-      const item: UploadItem = { id: crypto.randomUUID(), name: file.name, size: file.size, status: "processing" };
+      const item: UploadItem = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        size: file.size,
+        status: "processing",
+        edited: false,
+      };
       reg.set(item.id, { identityKey });
       knownKeys.add(identityKey);
       remainingSlots -= 1;
@@ -190,6 +214,33 @@ export function useSourceImages() {
   }, []);
 
   /**
+   * 편집 결과로 픽셀 데이터를 교체한다. 첫 교체 시 편집 전 데이터를 보관해 `restoreOriginal` 을 가능하게 한다.
+   * 이전 미리보기 URL 은 여기서 해제한다.
+   */
+  const replaceImage = useCallback((id: string, next: ReplacementImage) => {
+    const entry = registry.current.get(id);
+    if (!entry?.image) return;
+    const prev = entry.image;
+    entry.original ??= { blob: prev.blob, mime: prev.mime, width: prev.width, height: prev.height };
+    const image: SourceImage = { ...prev, ...next, previewUrl: URL.createObjectURL(next.blob) };
+    releaseSourceImage(prev);
+    entry.image = image;
+    dispatch({ type: "replace", id, image, edited: true });
+  }, []);
+
+  /** 편집 전 상태로 되돌린다. 보관된 원본이 없으면 아무 일도 하지 않는다. */
+  const restoreOriginal = useCallback((id: string) => {
+    const entry = registry.current.get(id);
+    if (!entry?.image || !entry.original) return;
+    const prev = entry.image;
+    const image: SourceImage = { ...prev, ...entry.original, previewUrl: URL.createObjectURL(entry.original.blob) };
+    releaseSourceImage(prev);
+    entry.image = image;
+    entry.original = undefined;
+    dispatch({ type: "replace", id, image, edited: false });
+  }, []);
+
+  /**
    * 항목 순서 변경. 순서는 Phase 2-3 이어붙이기/PDF 페이지 순서가 된다.
    * `toIndex` 는 이동 후 위치. 범위를 벗어나면 양 끝으로 보정된다.
    */
@@ -209,6 +260,8 @@ export function useSourceImages() {
     addFiles,
     remove,
     move,
+    replaceImage,
+    restoreOriginal,
     clear,
     dismissRejected,
   };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { EditorTool } from "@/components/editor/ImageEditor";
 import { CardDeck } from "@/components/studio/CardDeck";
 import { ControlPanel, type PrimaryAction } from "@/components/studio/ControlPanel";
 import { PreviewPanel } from "@/components/studio/PreviewPanel";
@@ -9,6 +10,7 @@ import { Dropzone } from "@/components/uploader/Dropzone";
 import { useCompression } from "@/hooks/useCompression";
 import { useSourceImages } from "@/hooks/useSourceImages";
 import { MB } from "@/lib/constants";
+import type { EditResult } from "@/lib/image/edit";
 import { DEFAULT_PRESET_ID, findPreset, SUBMISSION_PRESETS, type SubmissionPreset } from "@/lib/presets";
 
 /**
@@ -31,13 +33,35 @@ export function Studio() {
     if (next.maxBytesPerFile !== null) compression.changeTarget(next.maxBytesPerFile / MB);
   };
 
+  /** 편집 중인 카드와 시작 도구. 카드가 바뀌거나 삭제되면 편집을 닫는다. */
+  const [editing, setEditing] = useState<{ id: string; tool: EditorTool } | null>(null);
+  const editingTool = editing && selectedItem && editing.id === selectedItem.id ? editing.tool : null;
+
   const handleRemove = (id: string) => {
     compression.forget(id);
     source.remove(id);
+    if (editing?.id === id) setEditing(null);
   };
   const handleClear = () => {
     compression.reset();
     source.clear();
+    setEditing(null);
+  };
+
+  const startEdit = (id: string, tool: EditorTool) => {
+    setSelectedId(id);
+    setEditing({ id, tool });
+  };
+  const applyEdit = (result: EditResult) => {
+    if (!editing) return;
+    source.replaceImage(editing.id, result);
+    compression.forget(editing.id); // 픽셀이 바뀌었으니 이전 압축 결과는 무효
+    setEditing(null);
+  };
+  const restoreOriginal = () => {
+    if (!selectedItem) return;
+    source.restoreOriginal(selectedItem.id);
+    compression.forget(selectedItem.id);
   };
 
   const limitBytes = Math.round(compression.targetMB * MB);
@@ -124,6 +148,7 @@ export function Studio() {
           entries={compression.entries}
           targetMB={compression.targetMB}
           onDownload={compression.download}
+          onEdit={startEdit}
         />
       </section>
 
@@ -131,6 +156,11 @@ export function Studio() {
         item={selectedItem}
         entry={selectedItem ? compression.entries[selectedItem.id] : undefined}
         total={source.items.length}
+        editingTool={editingTool}
+        onStartEdit={(tool) => selectedItem && startEdit(selectedItem.id, tool)}
+        onApplyEdit={applyEdit}
+        onCancelEdit={() => setEditing(null)}
+        onRestoreOriginal={restoreOriginal}
       />
     </>
   );
