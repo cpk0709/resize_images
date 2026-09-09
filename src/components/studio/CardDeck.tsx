@@ -62,7 +62,11 @@ export function CardDeck({ items, selectedId, onSelect, onRemove, onMove, entrie
   };
 
   return (
-    <ul className="grid grid-cols-2 gap-3 md:grid-cols-3" data-testid="card-deck" aria-label="서류 카드 덱">
+    <ul
+      className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3"
+      data-testid="card-deck"
+      aria-label="서류 카드 덱"
+    >
       {items.map((item, index) => {
         const selected = item.id === selectedId;
         const entry = entries[item.id];

@@ -7,7 +7,8 @@ import { Studio } from "@/components/studio/Studio";
  */
 export default function Home() {
   return (
-    <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-5 px-5 py-6 sm:px-8">
+    // 모니터 폭을 다 쓴다. 최대 폭을 두지 않고 3열이 남는 공간을 비율로 나눠 갖는다.
+    <div className="flex w-full flex-1 flex-col gap-5 px-5 py-5 sm:px-8 2xl:px-10">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-baseline gap-3">
           <h1 className="text-3xl font-extrabold tracking-tight text-navy">DocuFit</h1>
@@ -19,7 +20,7 @@ export default function Home() {
         </p>
       </header>
 
-      <main className="grid flex-1 gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,1fr)]">
+      <main className="grid flex-1 gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_minmax(0,1.15fr)]">
         <Studio />
       </main>
 

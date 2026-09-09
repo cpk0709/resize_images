@@ -23,16 +23,17 @@ export function PreviewPanel({ item, entry, total }: PreviewPanelProps) {
         <span className="rounded bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn">편집 도구 준비 중</span>
       </div>
 
-      <div className="mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-xl border border-line bg-surface p-3" style={{ minHeight: 360 }}>
+      {/* 높이를 뷰포트 기준으로 고정한다. 세로로 긴 사진이 패널을 화면 밖까지 늘리지 않게. */}
+      <div className="mt-4 flex h-[clamp(320px,62vh,1000px)] items-center justify-center overflow-hidden rounded-xl border border-line bg-surface p-3">
         {item?.image ? (
           // blob: URL 은 next/image 최적화 대상이 아니므로 기본 <img> 를 쓴다.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.image.previewUrl}
             alt={`${item.name} 미리보기`}
-            // 원본보다 크게 확대하지 않는다. 작은 서류가 흐릿하게 늘어나는 것을 막기 위함.
-            style={{ maxWidth: item.image.width, maxHeight: item.image.height }}
-            className="max-h-[60vh] max-w-full rounded-md object-contain shadow-md"
+            // 컨테이너(100%)와 원본 크기 중 작은 쪽까지만. 원본보다 키워 흐릿해지는 것을 막는다.
+            style={{ maxWidth: `min(100%, ${item.image.width}px)`, maxHeight: `min(100%, ${item.image.height}px)` }}
+            className="h-auto w-auto rounded-md object-contain shadow-md"
           />
         ) : (
           <p className="text-sm text-muted">{item ? "이미지를 준비하는 중입니다." : "서류 카드를 선택하면 여기에 크게 표시됩니다."}</p>
