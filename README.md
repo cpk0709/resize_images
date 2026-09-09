@@ -53,6 +53,21 @@ Claude Code 가 열리면 `.claude/settings.json` 의 SessionStart 훅이 `scrip
 `docs/HISTORY.md` 의 현재 상태·다음 할 일·미결 결정·최근 타임라인과 git 상태를 자동으로 읽어 준다.
 세션을 마칠 때는 `/wrap-up` 을 실행하면 HISTORY 갱신 → 검증 → 커밋까지 진행한다. 규칙 전문은 `CLAUDE.md`.
 
+## 배포 (Vercel 기준)
+
+현재 버전(Phase 2)은 **브라우저 전용**이라 DB·S3 없이도 동작한다. 서버 처리 옵션(Phase 3)을 켜기 전까지는 환경변수 없이 배포해도 된다.
+
+```bash
+npm i -g vercel
+vercel link            # cpk0709/resize_images 저장소 연결
+vercel --prod
+```
+
+- `vercel.json` 의 크론(`/api/cron/cleanup`)은 Hobby 플랜 제한(하루 1회)에 맞춰 매일 18:00 UTC(한국 03:00)로 잡혀 있다.
+  서버 처리 옵션을 켜서 1시간 TTL 을 보장해야 할 때는 Pro 플랜에서 `*/10 * * * *` 로 바꾸거나 외부 스케줄러로 같은 엔드포인트를 호출한다.
+- 환경변수가 없으면 크론 엔드포인트는 인증 실패 시 401, 인증 성공 시 503(설정 없음)을 돌려주며 페이지 동작에는 영향이 없다.
+- 배포 후 확인: `curl -sI https://<도메인>/ | grep -i cache-control` 이 `no-store` 여야 한다.
+
 ## 검증
 
 ```bash

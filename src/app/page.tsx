@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Studio } from "@/components/studio/Studio";
 
 /**
@@ -29,6 +30,15 @@ export default function Home() {
         <p className="mt-1 text-sm text-muted">
           🛡️ 모든 변환은 이 브라우저 안에서 끝나며 파일은 서버로 전송되지 않습니다. 탭을 닫으면 남는 것이 없습니다.
           서버 처리 옵션을 사용하는 경우에만 결과 파일이 저장되고, 그 파일은 1시간 뒤 자동 삭제됩니다.
+        </p>
+        <p className="mt-2 text-xs text-muted">
+          <Link href="/privacy" className="underline hover:text-ink">
+            개인정보 처리 안내
+          </Link>
+          {" · "}
+          <a href="https://github.com/cpk0709/resize_images" className="underline hover:text-ink" rel="noopener noreferrer" target="_blank">
+            소스 코드
+          </a>
         </p>
       </footer>
     </div>
