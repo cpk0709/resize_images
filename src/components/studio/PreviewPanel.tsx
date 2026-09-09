@@ -132,9 +132,9 @@ export function PreviewPanel({
             </div>
           )}
           <div className="rounded-xl border border-line p-4 text-sm">
-            <p className="flex items-center justify-between font-semibold">
+            <p className="flex items-center justify-between gap-2 font-semibold">
               민감정보 가리기 · 크롭 · 회전
-              <span className="rounded bg-pass-soft px-1.5 py-0.5 text-[11px] font-medium text-pass">사용 가능</span>
+              <span className="shrink-0 whitespace-nowrap rounded bg-pass-soft px-1.5 py-0.5 text-[11px] font-medium text-pass">사용 가능</span>
             </p>
             <p className="mt-1 text-xs leading-relaxed text-muted">
               위 버튼으로 시작합니다. 편집은 이 브라우저 안에서만 이루어지고, 적용하면 카드 덱의 이미지가 교체됩니다.

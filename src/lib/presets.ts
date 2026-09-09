@@ -15,8 +15,11 @@ export interface SubmissionPreset {
   name: string;
   /** 기관 구분 (아이콘 선택용) */
   agency: "government" | "court" | "tax" | "custom";
-  /** 파일 1개당 상한. custom 은 null (사용자 입력) */
-  maxBytesPerFile: number | null;
+  /**
+   * 파일 1개당 상한의 **기본값**. 프리셋을 고르면 목표 용량이 이 값으로 설정되고,
+   * 사용자가 직접 바꿀 수 있으며 "기본값으로 초기화" 로 되돌린다.
+   */
+  maxBytesPerFile: number;
   /** 이 기관이 받아주는 포맷. 우리가 낼 수 있는 것만 나열 */
   acceptedFormats: OutputFormat[];
   /** 공식 안내로 확인했는가 */
@@ -55,14 +58,18 @@ export const SUBMISSION_PRESETS: readonly SubmissionPreset[] = [
   },
   {
     id: "custom",
-    name: "직접 설정",
+    name: "기타 기관 (직접 설정)",
     agency: "custom",
-    maxBytesPerFile: null,
+    maxBytesPerFile: 10 * MB,
     acceptedFormats: ["jpeg", "png", "pdf"],
     verified: true,
-    sourceNote: "목표 용량을 직접 입력합니다.",
+    sourceNote: "목록에 없는 기관. 기본 10MB 에서 시작해 목표 용량을 직접 입력합니다.",
   },
 ];
+
+export function presetDefaultMB(preset: SubmissionPreset): number {
+  return preset.maxBytesPerFile / MB;
+}
 
 export const DEFAULT_PRESET_ID = "gov24";
 

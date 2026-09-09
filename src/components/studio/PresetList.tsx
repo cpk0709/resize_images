@@ -43,11 +43,9 @@ export function PresetList({ presets, selectedId, onSelect, disabled = false }: 
               </span>
               <span className="min-w-0 flex-1 leading-tight">
                 <span className="block">{preset.name}</span>
-                {preset.maxBytesPerFile !== null && (
-                  <span className="block text-[13px] font-normal text-muted">
-                    파일 1장 최대 {formatBytes(preset.maxBytesPerFile, 0)}
-                  </span>
-                )}
+                <span className="block text-[13px] font-normal text-muted">
+                  기본 파일 1장 최대 {formatBytes(preset.maxBytesPerFile, 0)}
+                </span>
               </span>
               {!preset.verified && (
                 <span className="shrink-0 rounded bg-warn-soft px-1.5 py-0.5 text-[11px] font-medium text-warn">참고</span>

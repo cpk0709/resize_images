@@ -12,7 +12,7 @@ import { useMergeExport } from "@/hooks/useMergeExport";
 import { useSourceImages } from "@/hooks/useSourceImages";
 import { MB, type OutputFormat, type OutputLayout } from "@/lib/constants";
 import type { EditResult } from "@/lib/image/edit";
-import { DEFAULT_PRESET_ID, findPreset, SUBMISSION_PRESETS, type SubmissionPreset } from "@/lib/presets";
+import { DEFAULT_PRESET_ID, findPreset, presetDefaultMB, SUBMISSION_PRESETS, type SubmissionPreset } from "@/lib/presets";
 
 const FORMAT_LABEL: Record<OutputFormat, string> = { jpeg: "JPG", png: "PNG", pdf: "PDF" };
 
@@ -47,10 +47,12 @@ export function Studio() {
   // 이어붙이기는 2장부터. 1장으로 줄어들면 개별 파일로 되돌린다.
   const effectiveLayout: OutputLayout = source.readyImages.length < 2 ? "separate" : layout;
 
+  /** 프리셋을 고르면 그 기관의 기본 용량으로. 이후 사용자가 바꾸면 프리셋은 유지된 채 목표 용량만 달라진다. */
   const handleSelectPreset = (next: SubmissionPreset) => {
     setPresetId(next.id);
-    if (next.maxBytesPerFile !== null) compression.changeTarget(next.maxBytesPerFile / MB);
+    compression.changeTarget(presetDefaultMB(next));
   };
+  const resetTarget = () => compression.changeTarget(presetDefaultMB(preset));
 
   const handleFormatChange = (next: OutputFormat) => {
     setFormat(next);
@@ -130,6 +132,7 @@ export function Studio() {
         onSelectPreset={handleSelectPreset}
         targetMB={compression.targetMB}
         onTargetChange={compression.changeTarget}
+        onResetTarget={resetTarget}
         format={format}
         onFormatChange={handleFormatChange}
         layout={effectiveLayout}

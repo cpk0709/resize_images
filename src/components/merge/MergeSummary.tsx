@@ -30,9 +30,9 @@ export function MergeSummary({ layout, format, imageCount, targetMB, entry, onDo
 
   return (
     <div className="rounded-xl border border-line p-4 text-sm" data-testid="merge-summary">
-      <p className="flex items-center justify-between font-semibold">
+      <p className="flex items-center justify-between gap-2 font-semibold">
         병합 출력
-        <span className="rounded bg-pass-soft px-1.5 py-0.5 text-[11px] font-medium text-pass">사용 가능</span>
+        <span className="shrink-0 whitespace-nowrap rounded bg-pass-soft px-1.5 py-0.5 text-[11px] font-medium text-pass">사용 가능</span>
       </p>
       <p className="mt-1 text-xs leading-relaxed text-muted">
         {what}. 순서는 카드 덱 순서(1 → {imageCount})를 따릅니다. 목표 용량 {formatBytes(targetMB * MB, 1)} 은 파일 하나에 적용됩니다.

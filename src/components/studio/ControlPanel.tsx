@@ -8,10 +8,12 @@ import {
   OUTPUT_LAYOUTS,
   TARGET_SIZE_MAX_MB,
   TARGET_SIZE_MIN_MB,
+  TARGET_SIZE_PRESETS_MB,
   type OutputFormat,
   type OutputLayout,
 } from "@/lib/constants";
-import type { SubmissionPreset } from "@/lib/presets";
+import { formatBytes } from "@/lib/format";
+import { presetDefaultMB, type SubmissionPreset } from "@/lib/presets";
 
 export type PrimaryAction =
   | { kind: "disabled"; label: string }
@@ -25,6 +27,8 @@ interface ControlPanelProps {
   onSelectPreset: (preset: SubmissionPreset) => void;
   targetMB: number;
   onTargetChange: (mb: number) => void;
+  /** 목표 용량을 선택된 프리셋의 기본값으로 되돌린다 */
+  onResetTarget: () => void;
   format: OutputFormat;
   onFormatChange: (format: OutputFormat) => void;
   layout: OutputLayout;
@@ -53,6 +57,7 @@ export function ControlPanel({
   onSelectPreset,
   targetMB,
   onTargetChange,
+  onResetTarget,
   format,
   onFormatChange,
   layout,
@@ -64,8 +69,9 @@ export function ControlPanel({
   progress,
   primaryAction,
 }: ControlPanelProps) {
-  const customInputId = useId();
-  const isCustom = selectedPreset.maxBytesPerFile === null;
+  const targetInputId = useId();
+  const defaultMB = presetDefaultMB(selectedPreset);
+  const isOverridden = targetMB !== defaultMB;
 
   return (
     <aside className="flex flex-col gap-6 rounded-card border border-line bg-panel p-5" aria-label="컨트롤 패널">
@@ -74,12 +80,39 @@ export function ControlPanel({
       <section>
         <h3 className="mb-3 text-lg font-bold">제출처 프리셋</h3>
         <PresetList presets={presets} selectedId={selectedPreset.id} onSelect={onSelectPreset} disabled={isRunning} />
+        {!selectedPreset.verified && (
+          <p className="mt-3 text-xs leading-relaxed text-muted">
+            <span className="font-medium text-warn">참고 기준</span> · 기관 안내는 민원마다 다르고 자주 바뀝니다. 제출 전
+            해당 사이트의 첨부 안내를 한 번 확인하세요.
+          </p>
+        )}
+      </section>
 
-        {isCustom && (
-          <label htmlFor={customInputId} className="mt-3 flex items-center gap-2 text-sm">
-            파일 1개 최대
+      <section aria-labelledby={`${targetInputId}-heading`}>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 id={`${targetInputId}-heading`} className="text-lg font-bold">
+            목표 용량 <span className="text-sm font-normal text-muted">(파일 1개당)</span>
+          </h3>
+          <button
+            type="button"
+            onClick={onResetTarget}
+            disabled={isRunning || !isOverridden}
+            title={`${selectedPreset.name} 기본값 ${formatBytes(selectedPreset.maxBytesPerFile, 0)} 으로`}
+            className="text-xs text-muted underline hover:text-ink disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50"
+          >
+            기본값으로 초기화
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {TARGET_SIZE_PRESETS_MB.map((mb) => (
+            <ToggleButton key={mb} active={targetMB === mb} disabled={isRunning} onClick={() => onTargetChange(mb)}>
+              {mb}MB
+            </ToggleButton>
+          ))}
+          <label htmlFor={targetInputId} className="ml-1 flex items-center gap-1.5 text-sm">
+            <span className="sr-only">직접 입력</span>
             <input
-              id={customInputId}
+              id={targetInputId}
               type="number"
               inputMode="decimal"
               min={TARGET_SIZE_MIN_MB}
@@ -91,18 +124,17 @@ export function ControlPanel({
                 const v = Number(e.target.value);
                 if (Number.isFinite(v) && v >= TARGET_SIZE_MIN_MB && v <= TARGET_SIZE_MAX_MB) onTargetChange(v);
               }}
-              className="w-24 rounded-lg border border-line bg-panel px-2 py-1.5 text-sm"
+              aria-label="목표 용량 직접 입력 (MB)"
+              className="w-20 rounded-lg border border-line bg-panel px-2 py-1.5 text-sm"
             />
             MB
           </label>
-        )}
-
-        {!selectedPreset.verified && (
-          <p className="mt-3 text-xs leading-relaxed text-muted">
-            <span className="font-medium text-warn">참고 기준</span> · 기관 안내는 민원마다 다르고 자주 바뀝니다. 제출 전
-            해당 사이트의 첨부 안내를 한 번 확인하세요.
-          </p>
-        )}
+        </div>
+        <p className="mt-2 text-xs text-muted" aria-live="polite">
+          {isOverridden
+            ? `${selectedPreset.name} 기본값 ${formatBytes(selectedPreset.maxBytesPerFile, 0)} 대신 ${formatBytes(targetMB * 1024 * 1024, 1)} 을 사용합니다.`
+            : `${selectedPreset.name} 기본값입니다. 버튼이나 입력으로 바꿀 수 있습니다.`}
+        </p>
       </section>
 
       <section>
