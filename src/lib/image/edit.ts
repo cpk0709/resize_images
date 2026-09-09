@@ -20,12 +20,13 @@ export interface RegionRect {
   height: number;
 }
 
-/** black: 완전히 덮는다(복구 불가). mosaic: 블록 픽셀화. 주민번호 같은 식별 정보는 black 을 권장한다. */
-export type MaskStyle = "black" | "mosaic";
+/**
+ * solid: 단색으로 완전히 덮는다(복구 불가). 주민번호 같은 식별 정보에 권장.
+ * mosaic: 블록 픽셀화. 형태는 남지만 글자는 읽을 수 없다.
+ */
+export type MaskRegion = RegionRect & ({ style: "solid"; color: string } | { style: "mosaic" });
 
-export interface MaskRegion extends RegionRect {
-  style: MaskStyle;
-}
+export const DEFAULT_MASK_COLOR = "#000000";
 
 export interface EditOperations {
   rotation: Rotation;
@@ -47,6 +48,25 @@ export function isNoOp(ops: EditOperations): boolean {
   return ops.rotation === 0 && ops.crop === null && ops.masks.length === 0;
 }
 
+/**
+ * 이미지를 `rotation` 만큼 돌렸을 때 영역이 가는 자리. 에디터가 회전 후에도 그려둔 영역을 유지할 때 쓴다.
+ * `size` 는 회전 **전** 이미지 크기. 90 = 시계 방향(↻), 270 = 반시계(↺).
+ *   90:  (x, y) → (H - y - h, x)       270: (x, y) → (y, W - x - w)       180: (x, y) → (W - x - w, H - y - h)
+ */
+export function rotateRegion(r: RegionRect, rotation: Rotation, size: { width: number; height: number }): RegionRect {
+  const { width: W, height: H } = size;
+  switch (rotation) {
+    case 90:
+      return { x: H - r.y - r.height, y: r.x, width: r.height, height: r.width };
+    case 270:
+      return { x: r.y, y: W - r.x - r.width, width: r.height, height: r.width };
+    case 180:
+      return { x: W - r.x - r.width, y: H - r.y - r.height, width: r.width, height: r.height };
+    default:
+      return { ...r };
+  }
+}
+
 /** PNG 원본은 PNG 로(투명·선명도 유지), 그 외(JPEG·HEIC 변환본·WEBP 등)는 JPEG 로. */
 export function editOutputMime(sourceMime: string): "image/png" | "image/jpeg" {
   return sourceMime === "image/png" ? "image/png" : "image/jpeg";
@@ -61,7 +81,7 @@ export async function applyEdits(source: Blob, sourceMime: string, ops: EditOper
     for (const mask of ops.masks) {
       const r = clampRegion(mask, rotatedSize);
       if (!r) continue;
-      if (mask.style === "black") fillBlack(rotated, r);
+      if (mask.style === "solid") fillSolid(rotated, r, mask.color);
       else pixelate(rotated, r);
     }
 
@@ -103,34 +123,51 @@ function drawCropped(source: AnyCanvas, crop: RegionRect): AnyCanvas {
   return canvas;
 }
 
-function fillBlack(canvas: AnyCanvas, r: RegionRect): void {
+function fillSolid(canvas: AnyCanvas, r: RegionRect, color: string): void {
   const ctx = getContext2D(canvas);
-  ctx.fillStyle = "#000";
+  ctx.fillStyle = color;
   ctx.fillRect(r.x, r.y, r.width, r.height);
 }
 
-/**
- * 영역을 작은 캔버스로 축소한 뒤 보간 없이 확대해 되돌린다.
- * 블록 크기는 영역 짧은 변의 1/6, 최소 12px. 너무 작으면 식별 가능해 가리기 의미가 없다.
- */
+/** 영역을 픽셀화한 결과를 제자리에 덮어쓴다. */
 function pixelate(canvas: AnyCanvas, r: RegionRect): void {
-  const block = Math.max(12, Math.round(Math.min(r.width, r.height) / 6));
-  const smallW = Math.max(1, Math.round(r.width / block));
-  const smallH = Math.max(1, Math.round(r.height / block));
-
-  const small = createCanvas(smallW, smallH);
-  const sctx = getContext2D(small);
-  sctx.imageSmoothingEnabled = true;
-  sctx.drawImage(canvas, r.x, r.y, r.width, r.height, 0, 0, smallW, smallH);
-
+  const mosaic = renderMosaic(canvas, r);
   const ctx = getContext2D(canvas);
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(small, 0, 0, smallW, smallH, r.x, r.y, r.width, r.height);
+  ctx.drawImage(mosaic, 0, 0, mosaic.width, mosaic.height, r.x, r.y, r.width, r.height);
   ctx.imageSmoothingEnabled = true;
 }
 
+/** 모자이크 블록 한 변(px). 영역 짧은 변의 1/6, 최소 12px. 너무 작으면 식별 가능해 가리기 의미가 없다. */
+export function mosaicBlockSize(r: RegionRect): number {
+  return Math.max(12, Math.round(Math.min(r.width, r.height) / 6));
+}
+
+/**
+ * `source` 의 `r` 영역을 블록 단위로 픽셀화한 캔버스(크기 r.width × r.height)를 돌려준다.
+ * 최종 적용(edit)과 에디터 실시간 미리보기가 같은 함수를 써서 "보이는 대로 저장" 된다.
+ */
+export function renderMosaic(source: CanvasImageSource, r: RegionRect): AnyCanvas {
+  const block = mosaicBlockSize(r);
+  const smallW = Math.max(1, Math.round(r.width / block));
+  const smallH = Math.max(1, Math.round(r.height / block));
+
+  // 1) 축소: 블록마다 평균색 하나로
+  const small = createCanvas(smallW, smallH);
+  const sctx = getContext2D(small);
+  sctx.imageSmoothingEnabled = true;
+  sctx.drawImage(source, r.x, r.y, r.width, r.height, 0, 0, smallW, smallH);
+
+  // 2) 보간 없이 원래 크기로 확대
+  const out = createCanvas(Math.max(1, Math.round(r.width)), Math.max(1, Math.round(r.height)));
+  const octx = getContext2D(out);
+  octx.imageSmoothingEnabled = false;
+  octx.drawImage(small, 0, 0, smallW, smallH, 0, 0, out.width, out.height);
+  return out;
+}
+
 /** 이미지 경계 안으로 자르고 정수화. 남는 면적이 없으면 null. */
-function clampRegion(r: RegionRect, bounds: { width: number; height: number }): RegionRect | null {
+export function clampRegion(r: RegionRect, bounds: { width: number; height: number }): RegionRect | null {
   const x1 = Math.max(0, Math.floor(r.x));
   const y1 = Math.max(0, Math.floor(r.y));
   const x2 = Math.min(bounds.width, Math.ceil(r.x + r.width));
