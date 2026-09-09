@@ -101,6 +101,7 @@ prisma/schema.prisma      FileAsset, CleanupRun
 - 서버 전용 모듈은 첫 줄에 `import "server-only"` 를 둔다. 클라이언트 컴포넌트에서 import 하면 빌드가 실패해야 정상이다.
 - 환경변수와 Prisma 클라이언트는 **모듈 import 시점이 아닌 호출 시점**에 초기화한다 (`getEnv()`, `getPrisma()`). `next build` 가 라우트 설정을 수집할 때 env 없이도 통과해야 하기 때문.
 - `heic2any`, `fabric` 은 브라우저 전용이다. 클라이언트 컴포넌트에서 `await import()` 로 지연 로드한다.
+- **fabric v7 함정:** 객체 기준점 `originX/originY` 기본값이 `center` 다 (v6 까지는 left/top). `left/top` 을 좌상단 좌표로 쓰려면 객체 생성 시 `originX: "left", originY: "top"` 을 명시한다. 배경 이미지가 1/4 만 보이거나 사각형이 어긋나면 이 문제다 (HISTORY 세션 7). 픽셀 좌표 환산은 origin 과 무관한 `getBoundingRect()` 를 쓴다.
 - 스키마를 바꾸면 `npx prisma generate` 후 `npx prisma migrate dev --name <설명>`. 마이그레이션 파일은 커밋한다.
 - 검증 명령: `npx tsc --noEmit`, `npm run lint`, `npm run build`. 셋 다 통과해야 완료다.
 - 셸 명령은 **절대 경로**를 쓴다. `cd` 상태가 호출 간에 유지되어 엉뚱한 곳에 파일이 생긴 전례가 있다 (HISTORY 세션 1).

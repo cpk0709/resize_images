@@ -9,10 +9,10 @@
 
 ## 현재 상태
 
-- **Phase:** 2-2 완료 + **스튜디오 UI 리디자인 적용** (세션 6) → Phase 2-3(이어붙이기·PDF) 시작 전. 핵심 사용 사례(대용량 → 목표 용량 이하 JPG 다운로드)가 동작하는 상태.
-- **UI 기준:** `docs/design/studio-concept-v1.png` (Gemini 시안). 3열 스튜디오: 컨트롤 패널(프리셋·형식·신호등·CTA) / 편집 캔버스(드롭존·카드 덱) / 병합·가리기 미리보기(도구는 준비 중 표시). 라이트 테마 단일.
-- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-08 세션 6). Chrome 헤드리스(CDP) 스모크 19개 체크 전부 통과. HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
-- **스모크 테스트 자산 위치:** `%TEMP%\docufit-smoke\` (cdp-compress.mjs, cdp-studio.mjs, 테스트 이미지). `.next/` 아래에 두면 `next build` 가 지운다.
+- **Phase:** 2-2 완료, 스튜디오 UI 적용, **2-4 에디터(가리기·모자이크·크롭·회전) 완료** (세션 7) → Phase 2-3(이어붙이기·PDF) 시작 전. 사용자 요청으로 2-4 를 2-3 보다 먼저 진행함.
+- **UI 기준:** `docs/design/studio-concept-v1.png` (Gemini 시안). 3열 스튜디오(전폭 반응형): 컨트롤 패널 / 편집 캔버스(드롭존·카드 덱) / 미리보기·편집 패널(병합만 준비 중 표시). 라이트 테마 단일.
+- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-09 세션 7). Chrome 헤드리스(CDP) 스모크: 스튜디오 19개 + 에디터 26개 체크 통과. HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
+- **스모크 테스트 자산 위치:** `%TEMP%\docufit-smoke\` (cdp-compress.mjs, cdp-studio.mjs, cdp-editor.mjs, 테스트 이미지). `.next/` 아래에 두면 `next build` 가 지운다.
 - **로컬에서 아직 안 한 것:** DB 마이그레이션(`prisma migrate dev --name init`), S3 자격증명 연결. 로컬 `.env` 에는 CRON_SECRET 만 채워져 있음
 - **프로덕션에서 재확인할 것:** `Cache-Control: no-store` 헤더 (dev 모드에서는 Next 가 덮어써 확인 불가)
 - **원격 저장소:** `https://github.com/cpk0709/resize_images.git` (origin, 브랜치 main)
@@ -22,10 +22,10 @@
 Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한다. 각 소단계가 끝나면 로컬에서 직접 눌러볼 수 있어야 한다.
 
 1. **HEIC 실파일 검증** 아이폰 사진(HEIC)을 실제로 올려 변환·썸네일·"HEIC → JPG 변환됨" 배지를 확인. 실패 시 `src/lib/image/heic.ts` 부터 본다.
-2. **Phase 2-3 이어붙이기** 순서 드래그 정렬, 세로/가로, 하나의 이미지 또는 PDF(pdf-lib) 내보내기. 완료 기준: 계약서 3장 → PDF 1개.
-4. **Phase 2-4 에디터** fabric 캔버스로 크롭, 검은 박스 가리기, 모자이크 브러시. 완료 기준: 주민번호 가린 신분증 내보내기.
-5. **Phase 3 서버 폴백 (선택)** 캔버스 한계 초과 시 동의 후 가리기 끝난 결과만 sharp 로 압축, S3 + 10분 presigned + 60분 파기. 미결 결정 1 에 따라 Phase 2 출시 후로 미룰 수 있음.
-6. **Phase 4 배포** 배포 대상 결정, 프로덕션 `no-store` 확인, 개인정보처리방침 페이지, 접속 로그 보관 정책, (폴백 사용 시) 크론 실동작 검증 + S3 Lifecycle.
+2. **Phase 2-3 이어붙이기** 카드 덱 순서(드래그 정렬은 이미 가능) → 세로/가로 병합 → 하나의 이미지 또는 PDF(pdf-lib) 내보내기. 미리보기 패널의 "세로/가로 병합" 자리에 들어간다. 완료 기준: 계약서 3장 → PDF 1개.
+3. **에디터 후속(선택)** 창 크기 변경 시 캔버스 재배치, 모자이크 블록 크기 조절, A4 비율 크롭 프리셋.
+4. **Phase 3 서버 폴백 (선택)** 캔버스 한계 초과 시 동의 후 가리기 끝난 결과만 sharp 로 압축, S3 + 10분 presigned + 60분 파기. 미결 결정 1 에 따라 Phase 2 출시 후로 미룰 수 있음.
+5. **Phase 4 배포** 배포 대상 결정, 프로덕션 `no-store` 확인, 개인정보처리방침 페이지, 접속 로그 보관 정책, (폴백 사용 시) 크론 실동작 검증 + S3 Lifecycle.
 
 ## 미결 결정 (사용자 답 필요)
 
@@ -39,6 +39,13 @@ Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한�
 ---
 
 ## 타임라인 (최신이 위)
+
+### 2026-09-09 · 세션 7 · 전폭 반응형 레이아웃 + Phase 2-4 에디터(가리기·모자이크·크롭·회전)
+- **한 것:** (1) 레이아웃: 최대 폭 제거, 3열 비율 340px/1fr/1.15fr, 미리보기 상자 높이 clamp(320px,62vh,1000px)·이미지 상한 `min(100%, 원본)`, 카드 덱 auto-fill 그리드. (2) 리팩토링 커밋: 캔버스 헬퍼를 `src/lib/image/canvas.ts` 로 추출. (3) `src/lib/image/edit.ts` 순수 편집 로직(회전 → 가리기(black/mosaic) → 크롭, 좌표는 회전 후 이미지 px). (4) `useSourceImages.replaceImage/restoreOriginal` + `UploadItem.edited`, 첫 편집 전 픽셀을 레지스트리에 보관. (5) `src/components/editor/ImageEditor.tsx` fabric v7 동적 import, 드래그로 사각형 생성 후 선택 도구로 자동 전환, Delete 삭제, 90° 회전은 즉시 작업 이미지에 적용(영역 초기화), "적용" 시 `getBoundingRect()`→이미지 px 환산. (6) PreviewPanel 보기/편집 모드, 카드 [가리기][크롭] 칩 활성, 편집됨 배지, 원본 복원, 편집 후 압축 결과 무효화.
+- **결정:** (1) 사용자 요청으로 2-4(에디터)를 2-3(병합)보다 먼저. (2) 픽셀 변경은 fabric 이 아니라 `edit.ts` 가 전담. fabric 은 "어디를" 정하는 UI 만. 서버(sharp) 이식·재현성 때문. (3) 모자이크 블록은 짧은 변의 1/6, 최소 12px. 식별 정보는 검은 박스 권장을 힌트로 표시. (4) 회전은 즉시 적용 방식. 좌표계가 바뀌므로 그려둔 영역은 지운다고 안내. (5) 편집 중간 결과는 JPEG 0.97(PNG 원본은 PNG).
+- **문제/해결:** (1) fabric v7 은 `originX/originY` 기본값이 center (CHANGELOG BREAKING #10715) → 배경 이미지가 1/4 만 보이고 사각형이 어긋남 → 배경·사각형에 left/top 명시. CLAUDE.md 작업 규칙에 기록. (2) `drawRotated` 가 translate/rotate 변환을 되돌리지 않아 이어서 그린 `fillRect` 가 중심만큼 밀림 → save/restore. 크롭은 새 캔버스를 써서 영향 없었음. (3) 에디터 키 핸들러 effect 가 `removeSelected` 선언 전에 참조 → 순서 재배치. (4) python3 헤어독이 Windows 스토어 스텁에서 멈춤 → node 로 대체.
+- **검증(Chrome 헤드리스, cdp-editor.mjs, 실제 마우스 이벤트):** 640×480 파랑 PNG 에 가리기 영역 드래그 → 적용 → 영역 내부 픽셀 검정, 외부 파랑 유지. 크롭 왼쪽 절반 → 320×478. 회전 90° → 478×320. 원본 복원 → 640×480, 편집됨 배지 제거. 브라우저 오류 0. 스튜디오 스모크 19개도 통과. `tsc`/`lint`/`build` 통과.
+- **다음:** Phase 2-3 이어붙이기.
 
 ### 2026-09-08 · 세션 6 · 스튜디오 UI 리디자인 (Gemini 시안 적용)
 - **한 것:** 시안 `docs/design/studio-concept-v1.png` 를 저장소에 보관. `globals.css` 디자인 토큰(navy/pass/warn/fail/surface, 라이트 단일). `src/lib/presets.ts` 제출처 프리셋(정부24·대법원·홈택스·직접 설정, `verified` 플래그). 새 컴포넌트 `src/components/studio/{Studio,ControlPanel,PresetList,SizeMeter,CardDeck,PreviewPanel}.tsx`. `useSourceImages.move()` 순서 변경(HTML5 드래그 + ◀▶ 버튼 키보드 경로). `Dropzone` 은 파일 드래그(`Files`)에만 반응하도록 수정하고 클릭 영역 전체·키보드 열기 지원. `page.tsx` 헤더(배지)/3열 grid/푸터. 구 `Uploader`, `ImageList`, `CompressPanel` 삭제.
