@@ -43,7 +43,8 @@ export default function Home() {
           </span>
         </p>
         <p className="mt-2 text-xs text-muted">
-          <Link href="/privacy" className="underline hover:text-ink">
+          {/* prefetch 끔: 정적 export(GitHub Pages)에서 세그먼트 프리페치 파일 경로가 어긋나 404 를 내기 때문. 클릭 이동은 정상. */}
+          <Link href="/privacy" prefetch={false} className="underline hover:text-ink">
             개인정보 처리 안내
           </Link>
           {" · "}

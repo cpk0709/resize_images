@@ -53,6 +53,19 @@ Claude Code 가 열리면 `.claude/settings.json` 의 SessionStart 훅이 `scrip
 `docs/HISTORY.md` 의 현재 상태·다음 할 일·미결 결정·최근 타임라인과 git 상태를 자동으로 읽어 준다.
 세션을 마칠 때는 `/wrap-up` 을 실행하면 HISTORY 갱신 → 검증 → 커밋까지 진행한다. 규칙 전문은 `CLAUDE.md`.
 
+## 임시 배포 (GitHub Pages)
+
+`main` 에 push 하면 `.github/workflows/deploy-pages.yml` 이 정적 export 를 빌드해 **https://cpk0709.github.io/resize_images/** 에 배포한다.
+
+```bash
+npm run build:pages      # 로컬에서 같은 빌드 재현 → out/
+```
+
+- `scripts/build-pages.mjs` 가 `GITHUB_PAGES=true` 로 `next build` 를 돌린다. `next.config.ts` 는 이때만 `output: "export"`, `basePath: "/resize_images"`, `trailingSlash: true` 를 켠다.
+- 정적 export 는 Request 를 읽는 Route Handler 를 지원하지 않아, 빌드 동안 `src/app/api` 를 옆으로 옮겨 두고 끝나면 복원한다. 현재 버전(브라우저 전용)은 서버 라우트를 쓰지 않으므로 기능 차이는 없다.
+- **정적 호스팅은 응답 헤더를 제어할 수 없다.** `Cache-Control: no-store` 등 보안 헤더는 Node 서버 배포(아래 Vercel)에서만 적용된다. 파일은 서버로 가지 않으므로 캐시에 남는 것은 코드뿐이지만, 정식 배포는 Vercel 을 권장한다.
+- 첫 배포 전 저장소 Settings → Pages → Source 를 **GitHub Actions** 로 두어야 한다. 워크플로가 자동 활성화(enablement)를 시도하지만 권한에 따라 수동 설정이 필요할 수 있다.
+
 ## 배포 (Vercel 기준)
 
 현재 버전(Phase 2)은 **브라우저 전용**이라 DB·S3 없이도 동작한다. 서버 처리 옵션(Phase 3)을 켜기 전까지는 환경변수 없이 배포해도 된다.

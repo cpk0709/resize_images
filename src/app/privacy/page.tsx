@@ -21,7 +21,7 @@ export default function PrivacyPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:px-8">
-      <Link href="/" className="text-sm text-muted underline hover:text-ink">
+      <Link href="/" prefetch={false} className="text-sm text-muted underline hover:text-ink">
         ← 스튜디오로 돌아가기
       </Link>
 
