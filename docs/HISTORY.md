@@ -42,6 +42,12 @@ Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한�
 
 ## 타임라인 (최신이 위)
 
+### 2026-09-10 · 세션 18 · 파비콘 교체 (DocuFit 브랜드 마크)
+- **한 것:** `src/app/icon.svg` 원본(남색 rx14 타일 + 접힌 모서리 흰 서류 + 우하단 초록 합격 체크, 16px 가독성을 위해 요소 3개로 제한). `scripts/generate-icons.mjs` 가 sharp 로 `icon.png`(48), `apple-icon.png`(180), `favicon.ico`(32, PNG 내장 ICO 를 직접 조립)를 생성. 기본 Next favicon.ico 교체. Next 파일 규약이라 `<link rel="icon">` 4종이 자동 노출되고 basePath 도 자동 적용.
+- **결정:** 아이콘 원본은 SVG 하나만 손으로 관리하고 나머지는 스크립트 산출물을 커밋(빌드 때 생성하지 않음 — 빌드 의존성·시간을 늘리지 않기 위해). 디자인을 바꾸면 스크립트를 다시 돌린다.
+- **검증:** dev 서버 HTML 에 ico/png/svg/apple-touch 링크 4개, 각 파일 200 + 올바른 Content-Type. ICO 헤더(type 1, count 1, PNG 시그니처 offset 22) 확인. 16/32/48px 확대 몽타주로 가독성 확인.
+- **다음:** SEO(메타데이터·OG 이미지·robots/sitemap·JSON-LD·랜딩 설명/FAQ). manifest 는 basePath 때문에 `manifest.ts`(force-static)로.
+
 ### 2026-09-10 · 세션 17 · GitHub Pages 임시 배포 (정적 export + Actions)
 - **한 것:** `next.config.ts` 가 `GITHUB_PAGES=true` 일 때만 `output: "export"`, `basePath: "/resize_images"`, `trailingSlash: true`, `images.unoptimized`. `scripts/build-pages.mjs`(`npm run build:pages`): 빌드 동안 `src/app/api` 를 `.pages-excluded-api` 로 옮기고 반드시 복원(try/finally, SIGINT), `.next/dev/types` 제거(dev 산출물이 api 라우트를 참조해 타입 검사를 깨뜨림), `out/.nojekyll` 추가, Windows 에서 dev 서버가 디렉터리를 잡고 있을 때(EPERM) 안내. `.github/workflows/deploy-pages.yml`: main push 마다 typecheck·lint → build:pages → configure-pages(enablement) → upload → deploy. README "임시 배포 (GitHub Pages)" 절. create-next-app 잔여 SVG(`public/*.svg`) 삭제. 푸터·개인정보 페이지 `Link` 에 `prefetch={false}`.
 - **결정:** (1) 서버 라우트 제외는 런타임 분기가 아니라 빌드 시 디렉터리 격리. `export const dynamic` 은 리터럴이어야 하고 `force-static` 은 Vercel 크론 인증을 깨뜨리기 때문. (2) `trailingSlash: true` 유지 — `/privacy` 와 `/privacy/` 둘 다 동작(Pages 가 301). false 면 `/privacy/` 가 404. (3) 세그먼트 프리페치 파일 경로 불일치(export 는 `privacy/__next.privacy/__PAGE__.txt` 디렉터리로 쓰고 클라이언트는 `privacy/__next.privacy.__PAGE__.txt` 를 요청) 는 Next 16 export 의 문제로 보여 `prefetch={false}` 로 우회. 클릭 이동은 `privacy/index.txt` 로 정상. (4) 정적 호스팅은 응답 헤더를 못 넣으므로 보안 헤더는 Vercel 배포에서만. 임시 배포라 README 에 명시.
