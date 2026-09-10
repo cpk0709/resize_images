@@ -16,13 +16,13 @@
 - **로컬에서 아직 안 한 것:** DB 마이그레이션(`prisma migrate dev --name init`), S3 자격증명 연결. 로컬 `.env` 에는 CRON_SECRET 만 채워져 있음
 - **프로덕션 헤더:** `next start` 로 실측 완료 (세션 11) — `no-store`, `nosniff`, `DENY`, `no-referrer` 적용. 실서비스 URL 에서 한 번 더 확인할 것.
 - **원격 저장소:** `https://github.com/cpk0709/resize_images.git` (origin, 브랜치 main)
-- **임시 배포:** GitHub Pages `https://cpk0709.github.io/resize_images/` — main push 마다 `.github/workflows/deploy-pages.yml` 이 정적 export(`npm run build:pages`)를 배포. 정적 호스팅이라 보안 헤더 미적용, 서버 라우트 없음. 정식 배포는 Vercel 예정.
+- **임시 배포(운영 중):** GitHub Pages **https://cpk0709.github.io/resize_images/** — main push 마다 `.github/workflows/deploy-pages.yml` 이 정적 export(`npm run build:pages`)를 배포(약 1~2분). 2026-09-10 세션 17 에 첫 배포 성공, 실배포 주소에서 전 스모크 통과. 정적 호스팅이라 보안 헤더 미적용, 서버 라우트 없음. 정식 배포는 Vercel 예정.
 
 ## 다음 할 일 (우선순위 순)
 
 Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한다. 각 소단계가 끝나면 로컬에서 직접 눌러볼 수 있어야 한다.
 
-1. **파비콘 · SEO 최적화** (사용자 지시, 2026-09-10) — 대상: 관공서·은행 사이트에 서류 사진을 올리다 용량·확장자 제한에 막힌 사람. 할 일: 파비콘/아이콘 세트(`app/icon`, `apple-icon`, manifest), 한국어 검색 의도에 맞는 title·description·키워드(예: "정부24 첨부파일 용량 초과", "HEIC JPG 변환", "전입신고 서류 사진 10MB", "이미지 용량 줄이기 무료"), Open Graph·Twitter 카드 이미지, `robots.txt`·`sitemap.xml`(`app/robots.ts`, `app/sitemap.ts`), JSON-LD(WebApplication/FAQ), 랜딩 본문에 검색 의도를 담은 설명·FAQ 섹션(프라이버시 강조), `metadataBase`·canonical, `lang="ko"`. 배포 도메인이 정해져야 `metadataBase` 를 확정할 수 있다.
+1. **파비콘 · SEO 최적화** (사용자 지시, 2026-09-10) — 대상: 관공서·은행 사이트에 서류 사진을 올리다 용량·확장자 제한에 막힌 사람. 할 일: 파비콘/아이콘 세트(`app/icon`, `apple-icon`, manifest), 한국어 검색 의도에 맞는 title·description·키워드(예: "정부24 첨부파일 용량 초과", "HEIC JPG 변환", "전입신고 서류 사진 10MB", "이미지 용량 줄이기 무료"), Open Graph·Twitter 카드 이미지, `robots.txt`·`sitemap.xml`(`app/robots.ts`, `app/sitemap.ts` — 정적 export 에서는 `dynamic = "force-static"` 필요), JSON-LD(WebApplication/FAQ), 랜딩 본문에 검색 의도를 담은 설명·FAQ 섹션(프라이버시 강조), `metadataBase` = **https://cpk0709.github.io/resize_images**(basePath 포함 주의)·canonical, `lang="ko"`.
 2. **HEIC 실파일 검증** 아이폰 사진(HEIC)을 실제로 올려 변환·썸네일·"HEIC → JPG 변환됨" 배지를 확인. 실패 시 `src/lib/image/heic.ts` 부터 본다.
 2. **Phase 4 배포 실행** 사용자가 Vercel 에 배포(`vercel link && vercel --prod`) → 실서비스 URL 에서 `curl -sI <url> | grep -i cache-control` 로 `no-store` 확인 → 아이폰 HEIC 실기기 테스트 → `src/app/privacy/page.tsx` 3절에 호스팅 업체·접속 로그 보관 기간 기입. (헤더·개인정보 안내·크론 스케줄·README·모바일 레이아웃은 세션 11 에서 완료)
 3. **품질 후속(선택)** 병합 진행률 표시(현재는 스피너 문구만), 에디터 창 크기 변경 시 캔버스 재배치, 모자이크 블록 크기 조절, A4 비율 크롭 프리셋, PDF 페이지 여백 옵션.
@@ -47,7 +47,8 @@ Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한�
 - **결정:** (1) 서버 라우트 제외는 런타임 분기가 아니라 빌드 시 디렉터리 격리. `export const dynamic` 은 리터럴이어야 하고 `force-static` 은 Vercel 크론 인증을 깨뜨리기 때문. (2) `trailingSlash: true` 유지 — `/privacy` 와 `/privacy/` 둘 다 동작(Pages 가 301). false 면 `/privacy/` 가 404. (3) 세그먼트 프리페치 파일 경로 불일치(export 는 `privacy/__next.privacy/__PAGE__.txt` 디렉터리로 쓰고 클라이언트는 `privacy/__next.privacy.__PAGE__.txt` 를 요청) 는 Next 16 export 의 문제로 보여 `prefetch={false}` 로 우회. 클릭 이동은 `privacy/index.txt` 로 정상. (4) 정적 호스팅은 응답 헤더를 못 넣으므로 보안 헤더는 Vercel 배포에서만. 임시 배포라 README 에 명시.
 - **문제/해결:** (1) Windows 에서 `next dev` 실행 중 `src/app/api` rename 이 EPERM → dev 종료 후 빌드(스크립트가 안내). (2) 타입 검사가 `.next/dev/types/validator.ts` 때문에 실패 → 빌드 전 삭제. (3) **CI 첫 실행 실패 2회.** ① `src/generated/prisma` 가 없어 tsc 실패 — 문서에 있다고 적혀 있던 `postinstall` 이 실제로는 없었음 → `postinstall: prisma generate` 추가 + 워크플로 더미 `DATABASE_URL`. ② `LayoutProps` 전역 타입이 없어 tsc 실패 — `next-env.d.ts`/`.next/types` 는 gitignore 대상이고 dev/build 가 만들기 때문 → `typecheck` 를 `next typegen && tsc --noEmit` 로. 둘 다 임시 폴더에 새로 clone 해 `npm ci` 부터 재현한 뒤 고쳤다(CI 로그는 비로그인 API 로 받을 수 없어 403). (4) 검증용 정적 서버는 Pages 규칙(디렉터리 → index.html, 슬래시 없는 디렉터리 → 301, 확장자 없는 경로 → .html)을 그대로 구현.
 - **검증(로컬 정적 서버 http://localhost:8080/resize_images/):** 라우팅 `/`200, `/privacy`→301→`/privacy/`200, 없는 경로 404. 스튜디오 30 / 모바일 15 / 병합 37 / 에디터 30 / 병합 중 편집 23 스모크 전부 통과(정적 export 대상). 클라이언트 이동 프로브(메인 ↔ 개인정보) 통과. `tsc`/`lint` 통과.
-- **다음:** push 후 Actions 실행 확인 → https://cpk0709.github.io/resize_images/ 에서 스모크 재실행 → 파비콘·SEO(`metadataBase` 는 이 주소로).
+- **배포 완료(실서비스 검증):** 사용자가 Settings → Pages → Source 를 GitHub Actions 로 켠 뒤 빈 커밋으로 재실행 → 성공. **https://cpk0709.github.io/resize_images/** 와 `/privacy/` 200. 실배포 주소에서 스튜디오 30 / 모바일 15 / 에디터 30 / 병합 중 편집 23 / 페이지 이동 프로브 전부 통과. 응답 헤더는 GitHub 의 `Cache-Control: max-age=600` (정적 호스팅이라 no-store 불가, 예상대로).
+- **다음:** 파비콘·SEO (`metadataBase` = https://cpk0709.github.io/resize_images). 사용자 실기기(HEIC) 테스트를 배포 주소에서.
 
 ### 2026-09-10 · 세션 16 · 모바일 최적화 레이아웃 + 레이아웃 뷰포트 확장 결함 수정
 - **한 것:** 모바일(lg 미만) 전용 배치 — 순서를 `order-*` 로 서류 추가(편집 캔버스) → 설정 → 미리보기로, 최종 버튼은 화면 하단 고정 바(`ActionBar` 를 데스크톱용 `hidden lg:flex` / 모바일용 `fixed bottom-0 lg:hidden` 두 벌로, `main pb-28`), 프리셋은 가로 스크롤 칩(`-mx-4 overflow-x-auto snap-x`, 260px), 드롭존 문구를 "탭해서 서류 사진 선택 또는 촬영" 으로, 카드 덱 2열·탭 타깃 확대·삭제 버튼 항상 표시, 미리보기 높이 50vh, 헤더 배지 짧은 문구, 헤더/푸터 이모지(🔒 🛡️) → `IconLock`/`IconShield`. 패널에 `className` prop 추가(Studio 가 배치 결정).
