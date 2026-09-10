@@ -10,8 +10,8 @@
 ## 현재 상태
 
 - **Phase:** **Phase 2 전체 완료** (세션 9: 2-3 이어붙이기·PDF). 업로드 → 편집(가리기·크롭·회전) → 출력(파일별 JPG/PNG, 세로/가로 이어붙이기, 페이지별 PDF) 이 모두 브라우저 안에서 동작한다. 다음은 Phase 4 배포 준비 (Phase 3 서버 폴백은 미결 결정 1 대로 보류).
-- **UI 기준:** `docs/design/studio-concept-v1.png` (Gemini 시안). 3열 스튜디오(전폭 반응형): 컨트롤 패널 / 편집 캔버스(드롭존·카드 덱) / 미리보기·편집 패널(병합만 준비 중 표시). 라이트 테마 단일.
-- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-09 세션 10). Chrome 헤드리스(CDP) 스모크: 스튜디오 30 + 에디터 30 + 병합/PDF 33 체크 통과. HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
+- **UI 기준:** `docs/design/studio-concept-v1.png` (Gemini 시안) + 사용자 피드백. 3열 스튜디오(전폭 반응형): 컨트롤 패널(설정) / 편집 캔버스(드롭존·카드 덱) / 미리보기·편집 패널 + **하단 액션 바(주요 동작 버튼, 우측 정렬)**. 버튼은 `src/components/ui/Button.tsx`, 아이콘은 `src/components/ui/icons.tsx` 만 사용. 라이트 테마 단일.
+- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-10 세션 12). Chrome 헤드리스(CDP) 스모크: 스튜디오 30 + 에디터 30 + 병합/PDF 33 체크 통과. HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
 - **스모크 테스트 자산 위치:** `%TEMP%\docufit-smoke\` (cdp-compress.mjs, cdp-studio.mjs, cdp-editor.mjs, 테스트 이미지). `.next/` 아래에 두면 `next build` 가 지운다.
 - **로컬에서 아직 안 한 것:** DB 마이그레이션(`prisma migrate dev --name init`), S3 자격증명 연결. 로컬 `.env` 에는 CRON_SECRET 만 채워져 있음
 - **프로덕션 헤더:** `next start` 로 실측 완료 (세션 11) — `no-store`, `nosniff`, `DENY`, `no-referrer` 적용. 실서비스 URL 에서 한 번 더 확인할 것.
@@ -39,6 +39,13 @@ Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한�
 ---
 
 ## 타임라인 (최신이 위)
+
+### 2026-09-10 · 세션 12 · 주요 동작 버튼을 우측 하단 액션 바로, 버튼·아이콘 스타일 정돈
+- **한 것:** (1) 리팩토링 커밋: `src/components/ui/Button.tsx` (ToggleButton / ActionButton primary·secondary·ghost, sm·md·lg). 컨트롤 패널·에디터·미리보기 패널에 세 벌 있던 버튼 스타일 통합. (2) `src/components/studio/ActionBar.tsx`: `PrimaryAction` 타입과 주요 버튼을 컨트롤 패널에서 분리해 **미리보기 패널 하단**에 배치. 왼쪽에 "JPG · 개별 파일 3장 · 파일마다 목표 5 MB" 식 출력 요약, 오른쪽 끝에 버튼. 편집 중에는 숨김. (3) `src/components/ui/icons.tsx` 단색 선 아이콘(화살표·다운로드·업로드·관공서·천칭·영수증·플러스·스피너). 프리셋 이모지(🏛️⚖️🧾＋)와 드롭존 "⬆", 버튼의 "▶ ↗" 를 모두 교체. (4) 주요 버튼 색을 파란 채움(accent)에서 남색(navy) 단일로. (5) 세션 훅의 upstream 오보 수정(Windows cmd 리다이렉트).
+- **결정:** 사용자 피드백 — 왼쪽 아래 버튼 위치가 애매하고 흐름(설정 → 서류 → 출력, 좌→우)에 맞지 않으며 색이 촌스럽다. 액션 바를 흐름의 끝인 오른쪽 하단에 두고, 이모지·강한 파랑을 걷어냄. 색 클래스는 `ui/Button.tsx` 밖에서 직접 쓰지 않는 것을 목표로 한다.
+- **문제/해결:** (1) Bash 히어독이 백슬래시·한글을 훼손하고 sed 가 UTF-8 이모지를 못 바꿔 스모크 수정이 헛돌았음 → 스크립트 파일은 Write 도구, 문자열 교체는 node 로 (기존 메모의 교훈 재확인). (2) 스모크가 이모지 "🧾" 로 프리셋을 클릭하던 것을 텍스트 "홈택스" 로 변경.
+- **검증:** 스튜디오 30 / 에디터 30 / 병합·PDF 33 스모크 전부 통과(포트 3000). 스크린샷으로 액션 바 위치·아이콘 확인. `tsc`/`lint`/`build` 통과.
+- **다음:** 사용자 로컬 테스트 피드백 반영. 배포·HEIC 실기기 확인.
 
 ### 2026-09-09 · 세션 11 · Phase 4 배포 준비 (사용자 결정 불필요한 항목)
 - **한 것:** (1) 프로덕션 모드(`next build` + `next start -p 3002`) 헤더 실측: `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `X-Powered-By` 없음, 크론 미인증 401. (2) `src/app/privacy/page.tsx` 개인정보 처리 안내 — 수집하지 않는 것(계정·이미지·EXIF·쿠키·분석 스크립트), 브라우저 처리 설명, 호스팅 접속 로그 고지(업체·기간은 배포 확정 후 명시), 서버 처리 옵션(준비 중)의 약속, 프리셋 참고값 고지, 문의 경로. 푸터에 링크 + 소스 코드 링크. (3) `vercel.json` 크론을 Hobby 제한에 맞춰 매일 18:00 UTC 로 (서버 경로 미사용이므로 실질 영향 없음). (4) README "배포 (Vercel 기준)" 절. (5) 390px·820px 스크린샷으로 1열 스택 레이아웃 확인 — 수정 불필요.
