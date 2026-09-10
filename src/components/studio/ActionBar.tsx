@@ -21,33 +21,52 @@ interface ActionBarProps {
 }
 
 /**
- * 작업 흐름의 끝(오른쪽 패널 하단)에 놓이는 액션 바.
- * 설정(왼쪽) → 서류(가운데) → 확인·출력(오른쪽) 흐름을 따라 버튼은 항상 오른쪽 끝에 둔다.
+ * 최종 동작 액션 바.
+ * - 데스크톱(lg+): 오른쭉 패널 하단에 놓인다 (설정 → 서류 → 출력, 좌→우 흐름의 끝).
+ * - 모바일: 화면 하단에 고정한다. 긴 세로 스크롤 어디서든 엄지로 바로 누를 수 있어야 한다.
+ *   `main` 에 `pb-28` 여백이 있어 내용이 가려지지 않는다 (page.tsx).
  * 최종 추출 버튼은 `hero` 변형 하나만 쓴다. 화면에서 가장 눈에 띄는 요소여야 한다.
  */
 export function ActionBar({ action, summary, progress }: ActionBarProps) {
   const running = action.kind === "cancel";
+  const status = running && progress && progress.total > 1 ? `최적화 중 ${progress.done}/${progress.total} · ` : running ? "최적화 중 · " : "";
+
   return (
-    <div className="mt-auto flex flex-wrap items-center justify-between gap-4 border-t border-line pt-5" data-testid="action-bar">
-      <p className="min-w-0 flex-1 text-sm text-muted" aria-live="polite">
-        {running && progress && progress.total > 1 ? `최적화 중 ${progress.done}/${progress.total} · ` : running ? "최적화 중 · " : ""}
-        {summary}
-      </p>
-      <PrimaryButton action={action} />
-    </div>
+    <>
+      {/* 데스크톱: 패널 안 */}
+      <div className="mt-auto hidden flex-wrap items-center justify-between gap-4 border-t border-line pt-5 lg:flex" data-testid="action-bar">
+        <p className="min-w-0 flex-1 text-sm text-muted" aria-live="polite">
+          {status}
+          {summary}
+        </p>
+        <PrimaryButton action={action} size="xl" />
+      </div>
+
+      {/* 모바일: 화면 하단 고정 */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-line bg-panel/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(27,36,55,0.08)] backdrop-blur lg:hidden"
+        data-testid="action-bar-mobile"
+      >
+        <p className="min-w-0 flex-1 text-xs leading-snug text-muted [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden" aria-live="polite">
+          {status}
+          {summary}
+        </p>
+        <PrimaryButton action={action} size="lg" />
+      </div>
+    </>
   );
 }
 
 /** hero 버튼 오른쪽의 원형 아이콘 자리. 버튼 안에서 아이콘이 따로 읽히게 한다. */
 function IconBadge({ children }: { children: React.ReactNode }) {
-  return <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">{children}</span>;
+  return <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 lg:h-8 lg:w-8">{children}</span>;
 }
 
-function PrimaryButton({ action }: { action: PrimaryAction }) {
+function PrimaryButton({ action, size }: { action: PrimaryAction; size: "lg" | "xl" }) {
   switch (action.kind) {
     case "disabled":
       return (
-        <ActionButton variant="hero" size="xl" disabled>
+        <ActionButton variant="hero" size={size} disabled className="shrink-0">
           {action.label}
         </ActionButton>
       );
@@ -55,7 +74,8 @@ function PrimaryButton({ action }: { action: PrimaryAction }) {
       return (
         <ActionButton
           variant="hero"
-          size="xl"
+          size={size}
+          className="shrink-0"
           onClick={action.onClick}
           trailingIcon={
             <IconBadge>
@@ -68,7 +88,7 @@ function PrimaryButton({ action }: { action: PrimaryAction }) {
       );
     case "cancel":
       return (
-        <ActionButton size="lg" variant="ghost" onClick={action.onClick} trailingIcon={<IconSpinner className="h-4 w-4" />}>
+        <ActionButton size={size === "xl" ? "lg" : "md"} variant="ghost" className="shrink-0" onClick={action.onClick} trailingIcon={<IconSpinner className="h-4 w-4" />}>
           {action.label}
         </ActionButton>
       );
@@ -76,7 +96,8 @@ function PrimaryButton({ action }: { action: PrimaryAction }) {
       return (
         <ActionButton
           variant="hero"
-          size="xl"
+          size={size}
+          className="shrink-0"
           onClick={action.onClick}
           trailingIcon={
             <IconBadge>

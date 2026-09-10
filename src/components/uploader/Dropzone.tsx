@@ -83,7 +83,7 @@ export function Dropzone({ onFiles, disabled = false, compact = false }: Dropzon
       onDrop={handleDrop}
       className={[
         "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed text-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent",
-        compact ? "px-6 py-6" : "px-6 py-12",
+        compact ? "px-4 py-5 sm:px-6 sm:py-6" : "px-4 py-8 sm:px-6 sm:py-12",
         isDragging ? "border-accent bg-accent-soft" : "border-line bg-surface/60 hover:border-navy/40",
         disabled ? "opacity-60" : "",
       ].join(" ")}
@@ -91,9 +91,16 @@ export function Dropzone({ onFiles, disabled = false, compact = false }: Dropzon
       <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-panel text-navy shadow-sm">
         <IconUpload className="h-5 w-5" />
       </span>
-      <p className="text-[15px] font-medium">여기에 서류를 드래그하거나 클릭하여 추가하세요</p>
+      {/* 모바일에는 드래그가 없다. 사진 앨범·카메라에서 고르는 흐름으로 안내한다. */}
+      <p className="text-[15px] font-medium">
+        <span className="lg:hidden">탭해서 서류 사진 선택 또는 촬영</span>
+        <span className="hidden lg:inline">여기에 서류를 드래그하거나 클릭하여 추가하세요</span>
+      </p>
       <p className="mt-1 text-xs text-muted">
-        JPG · PNG · HEIC(아이폰) · WEBP · GIF · BMP · TIFF, 한 번에 최대 {MAX_INPUT_FILES}장 · 파일은 이 브라우저 밖으로 나가지 않습니다
+        <span className="lg:hidden">아이폰 HEIC 포함 · 최대 {MAX_INPUT_FILES}장 · 사진은 이 브라우저 밖으로 나가지 않습니다</span>
+        <span className="hidden lg:inline">
+          JPG · PNG · HEIC(아이폰) · WEBP · GIF · BMP · TIFF, 한 번에 최대 {MAX_INPUT_FILES}장 · 파일은 이 브라우저 밖으로 나가지 않습니다
+        </span>
       </p>
 
       <input

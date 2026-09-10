@@ -29,6 +29,8 @@ export interface MergePanelProps {
 }
 
 interface PreviewPanelProps {
+  /** 그리드 순서 등 레이아웃 클래스. 상위(Studio)가 모바일/데스크톱 배치를 결정한다. */
+  className?: string;
   item: UploadItem | undefined;
   entry: CompressionEntry | undefined;
   /** 전체 장수. 병합 안내 문구용 */
@@ -57,6 +59,7 @@ interface PreviewPanelProps {
  * - 편집 모드: 같은 자리에 ImageEditor 가 들어온다.
  */
 export function PreviewPanel({
+  className = "",
   item,
   entry,
   total,
@@ -80,7 +83,7 @@ export function PreviewPanel({
   const toggleLayout = (next: OutputLayout) => onLayoutChange(layout === next ? "separate" : next);
 
   return (
-    <section className="flex flex-col rounded-card border border-line bg-panel p-5" aria-label="시각적 병합 및 가리기">
+    <section className={`flex min-w-0 flex-col rounded-card border border-line bg-panel p-4 sm:p-5 ${className}`} aria-label="시각적 병합 및 가리기">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold">{editing ? "편집" : merge ? "시각적 병합" : "시각적 병합 및 가리기"}</h2>
         {!editing && (
@@ -129,7 +132,8 @@ export function PreviewPanel({
       </div>
 
       {/* 높이를 뷰포트 기준으로 고정한다. 세로로 긴 사진이 패널을 화면 밖까지 늘리지 않게. */}
-      <div className="mt-4 h-[clamp(320px,62vh,1000px)]">
+      {/* 모바일은 화면이 좁고 세로 스크롤이 길어 절반 높이로, 데스크톱은 넉넉하게. */}
+      <div className="mt-4 h-[clamp(280px,50vh,1000px)] lg:h-[clamp(320px,62vh,1000px)]">
         {editing ? (
           <ImageEditor key={image.id + image.previewUrl} image={image} initialTool={editingTool} onApply={onApplyEdit} onCancel={onCancelEdit} />
         ) : merge ? (

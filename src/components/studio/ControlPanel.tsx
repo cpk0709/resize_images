@@ -17,6 +17,8 @@ import { formatBytes } from "@/lib/format";
 import { presetDefaultMB, type SubmissionPreset } from "@/lib/presets";
 
 interface ControlPanelProps {
+  /** 그리드 순서 등 레이아웃 클래스. 상위(Studio)가 모바일/데스크톱 배치를 결정한다. */
+  className?: string;
   presets: readonly SubmissionPreset[];
   selectedPreset: SubmissionPreset;
   onSelectPreset: (preset: SubmissionPreset) => void;
@@ -46,6 +48,7 @@ const LAYOUT_LABEL: Record<OutputLayout, string> = {
 
 /** 왼쪽 컨트롤 패널. 프리셋 → 목표 용량, 저장 형식, 출력 방식, 신호등, 주요 동작 버튼. 상태는 전부 props. */
 export function ControlPanel({
+  className = "",
   presets,
   selectedPreset,
   onSelectPreset,
@@ -66,8 +69,11 @@ export function ControlPanel({
   const isOverridden = targetMB !== defaultMB;
 
   return (
-    <aside className="flex flex-col gap-6 rounded-card border border-line bg-panel p-5" aria-label="컨트롤 패널">
-      <h2 className="text-xl font-bold">컨트롤 패널</h2>
+    <aside className={`flex min-w-0 flex-col gap-5 rounded-card border border-line bg-panel p-4 sm:p-5 lg:gap-6 ${className}`} aria-label="컨트롤 패널">
+      <h2 className="text-xl font-bold">
+        <span className="lg:hidden">설정</span>
+        <span className="hidden lg:inline">컨트롤 패널</span>
+      </h2>
 
       <section>
         <h3 className="mb-3 text-lg font-bold">제출처 프리셋</h3>

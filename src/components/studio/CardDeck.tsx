@@ -76,7 +76,7 @@ export function CardDeck({
 
   return (
     <ul
-      className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3"
+      className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]"
       data-testid="card-deck"
       aria-label="서류 카드 덱"
     >
@@ -111,7 +111,8 @@ export function CardDeck({
                 onRemove(item.id);
               }}
               aria-label={`${item.name} 제거`}
-              className="absolute right-2 top-2 z-10 rounded-md bg-panel/90 px-1.5 text-muted opacity-0 transition-opacity hover:text-ink focus:opacity-100 group-hover:opacity-100"
+              // 모바일에는 hover 가 없으므로 항상 보인다. 데스크톱에서는 hover/focus 시에만.
+              className="absolute right-2 top-2 z-10 rounded-md bg-panel/90 px-2 py-0.5 text-muted transition-opacity hover:text-ink focus:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
             >
               ✕
             </button>
@@ -184,7 +185,8 @@ function Chip({ children, disabled, onClick }: { children: React.ReactNode; disa
         e.stopPropagation();
         onClick();
       }}
-      className="rounded border border-line px-1.5 py-0.5 text-muted hover:border-navy/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+      // 모바일 탭 타깃을 위해 여백을 키우고, 데스크톱에서는 촘촘하게.
+      className="rounded border border-line px-2.5 py-1.5 text-xs text-muted hover:border-navy/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 lg:px-1.5 lg:py-0.5 lg:text-[11px]"
     >
       [{children}]
     </button>
@@ -211,7 +213,7 @@ function MoveButton({
         e.stopPropagation();
         onClick();
       }}
-      className="rounded px-1 text-muted hover:bg-surface hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
+      className="rounded px-2 py-1 text-muted hover:bg-surface hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 lg:px-1 lg:py-0"
     >
       {children}
     </button>

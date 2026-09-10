@@ -137,7 +137,9 @@ export function Studio() {
 
   return (
     <>
+      {/* 모바일에서는 서류 추가(편집 캔버스)가 먼저, 설정이 다음. 데스크톱은 설정 → 서류 → 출력. */}
       <ControlPanel
+        className="order-2 lg:order-1"
         presets={SUBMISSION_PRESETS}
         selectedPreset={preset}
         onSelectPreset={handleSelectPreset}
@@ -154,7 +156,7 @@ export function Studio() {
         isRunning={isRunning}
       />
 
-      <section className="flex flex-col gap-4 rounded-card border border-line bg-panel p-5" aria-label="편집 캔버스">
+      <section className="order-1 flex min-w-0 flex-col gap-4 rounded-card border border-line bg-panel p-4 sm:p-5 lg:order-2" aria-label="편집 캔버스">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">편집 캔버스</h2>
           {source.items.length > 0 && (
@@ -207,6 +209,7 @@ export function Studio() {
       </section>
 
       <PreviewPanel
+        className="order-3"
         item={selectedItem}
         entry={merge.isActive ? undefined : selectedItem ? compression.entries[selectedItem.id] : undefined}
         total={source.items.length}
