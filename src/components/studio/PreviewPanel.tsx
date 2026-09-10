@@ -1,21 +1,24 @@
 "use client";
 
 import { ImageEditor, type EditorTool } from "@/components/editor/ImageEditor";
+import { MergePreview } from "@/components/merge/MergePreview";
 import { MergeSummary } from "@/components/merge/MergeSummary";
 import { ActionBar, type PrimaryAction } from "@/components/studio/ActionBar";
-import { ActionButton } from "@/components/ui/Button";
+import { ActionButton, ToggleButton } from "@/components/ui/Button";
 import type { CompressionEntry } from "@/hooks/useCompression";
 import type { MergeEntry } from "@/hooks/useMergeExport";
 import type { UploadItem } from "@/hooks/useSourceImages";
 import type { OutputFormat, OutputLayout } from "@/lib/constants";
 import { formatBytes } from "@/lib/format";
 import type { EditResult } from "@/lib/image/edit";
+import type { SourceImage } from "@/lib/image/types";
 
-/** 병합 출력이 활성일 때 요약 카드에 필요한 것들 */
+/** 병합 출력이 활성일 때 미리보기·요약 카드에 필요한 것들 */
 export interface MergePanelProps {
   layout: OutputLayout;
   format: OutputFormat;
-  imageCount: number;
+  /** 카드 덱 순서 그대로의 준비된 이미지들 */
+  images: SourceImage[];
   targetMB: number;
   entry: MergeEntry | null;
   onDownload: () => void;
@@ -32,8 +35,11 @@ interface PreviewPanelProps {
   onApplyEdit: (result: EditResult) => void;
   onCancelEdit: () => void;
   onRestoreOriginal: () => void;
-  /** 병합 출력(이어붙이기/PDF)이 활성이면 요약 카드를 보여준다. null 이면 파일별 출력 모드. */
+  /** 병합 출력(이어붙이기/PDF)이 활성이면 미리보기와 요약 카드를 보여준다. null 이면 파일별 출력 모드. */
   merge: MergePanelProps | null;
+  /** 헤더의 병합 방향 토글. 컨트롤 패널 "출력 방식" 과 같은 상태를 공유한다. */
+  layout: OutputLayout;
+  onLayoutChange: (layout: OutputLayout) => void;
   /** 패널 하단 액션 바 (주요 동작). 편집 중에는 숨긴다. */
   action: PrimaryAction;
   actionSummary: string;
@@ -42,9 +48,9 @@ interface PreviewPanelProps {
 
 /**
  * 오른쪽 "시각적 병합 및 가리기" 영역.
- * 보기 모드: 선택한 서류의 큰 미리보기 + 정보 + 편집 시작 버튼.
- * 편집 모드: 같은 자리에 ImageEditor 가 들어온다.
- * 병합(Phase 2-3)은 자리만 잡아 두고 "준비 중" 으로 표시한다.
+ * - 보기 모드: 선택한 서류의 큰 미리보기 + 정보 + 편집 시작 버튼.
+ * - 병합 모드: 같은 자리에 배치 미리보기(결과가 있으면 결과)가 들어온다.
+ * - 편집 모드: 같은 자리에 ImageEditor 가 들어온다.
  */
 export function PreviewPanel({
   item,
@@ -56,32 +62,63 @@ export function PreviewPanel({
   onCancelEdit,
   onRestoreOriginal,
   merge,
+  layout,
+  onLayoutChange,
   action,
   actionSummary,
   progress,
 }: PreviewPanelProps) {
   const image = item?.image;
   const editing = editingTool !== null && image;
+  const canStitch = total >= 2;
+
+  /** 같은 방향을 다시 누르면 개별 파일로 되돌린다 */
+  const toggleLayout = (next: OutputLayout) => onLayoutChange(layout === next ? "separate" : next);
 
   return (
     <section className="flex flex-col rounded-card border border-line bg-panel p-5" aria-label="시각적 병합 및 가리기">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold">{editing ? "편집" : "시각적 병합 및 가리기"}</h2>
-        {!editing && image && (
+        <h2 className="text-xl font-bold">{editing ? "편집" : merge ? "시각적 병합" : "시각적 병합 및 가리기"}</h2>
+        {!editing && (
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("mask")}>
-              ■ 가리기
-            </ActionButton>
-            <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("crop")}>
-              ⌗ 크롭
-            </ActionButton>
-            <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("select")}>
-              ↻ 회전·편집
-            </ActionButton>
-            {item?.edited && (
-              <button type="button" onClick={onRestoreOriginal} className="text-xs text-muted underline hover:text-ink">
-                원본으로 되돌리기
-              </button>
+            {total > 0 && (
+              <>
+                <ToggleButton
+                  active={layout === "vertical"}
+                  disabled={!canStitch}
+                  title={canStitch ? "카드 덱 순서대로 위에서 아래로 이어붙입니다" : "2장 이상일 때 선택할 수 있습니다"}
+                  onClick={() => toggleLayout("vertical")}
+                >
+                  ⇅ 세로 병합
+                </ToggleButton>
+                <ToggleButton
+                  active={layout === "horizontal"}
+                  disabled={!canStitch}
+                  title={canStitch ? "카드 덱 순서대로 왼쪽에서 오른쪽으로 이어붙입니다" : "2장 이상일 때 선택할 수 있습니다"}
+                  onClick={() => toggleLayout("horizontal")}
+                >
+                  ⇆ 가로 병합
+                </ToggleButton>
+                <span className="mx-1 h-5 w-px bg-line" aria-hidden="true" />
+              </>
+            )}
+            {image && (
+              <>
+                <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("mask")}>
+                  ■ 가리기
+                </ActionButton>
+                <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("crop")}>
+                  ⌗ 크롭
+                </ActionButton>
+                <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("select")}>
+                  ↻ 회전·편집
+                </ActionButton>
+                {item?.edited && (
+                  <button type="button" onClick={onRestoreOriginal} className="text-xs text-muted underline hover:text-ink">
+                    원본으로 되돌리기
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
@@ -91,6 +128,16 @@ export function PreviewPanel({
       <div className="mt-4 h-[clamp(320px,62vh,1000px)]">
         {editing ? (
           <ImageEditor key={image.id + image.previewUrl} image={image} initialTool={editingTool} onApply={onApplyEdit} onCancel={onCancelEdit} />
+        ) : merge ? (
+          <div className="h-full overflow-hidden rounded-xl border border-line bg-surface p-3">
+            <MergePreview
+              images={merge.images}
+              layout={merge.layout}
+              format={merge.format}
+              result={merge.entry?.status === "done" ? merge.entry.result ?? null : null}
+              resultUrls={merge.entry?.status === "done" ? merge.entry.previewUrls ?? [] : []}
+            />
+          </div>
         ) : (
           <div className="flex h-full items-center justify-center overflow-hidden rounded-xl border border-line bg-surface p-3">
             {image ? (
@@ -112,7 +159,7 @@ export function PreviewPanel({
         )}
       </div>
 
-      {image && !editing && (
+      {image && !editing && !merge && (
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
           <Info label="파일" value={item.name} />
           <Info
@@ -137,12 +184,14 @@ export function PreviewPanel({
       {!editing && (
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {merge ? (
-            <MergeSummary {...merge} />
+            <MergeSummary layout={merge.layout} format={merge.format} imageCount={merge.images.length} targetMB={merge.targetMB} entry={merge.entry} onDownload={merge.onDownload} />
           ) : (
             <div className="rounded-xl border border-dashed border-line p-4 text-sm">
               <p className="font-semibold">이어붙이기 · PDF</p>
               <p className="mt-1 text-xs leading-relaxed text-muted">
-                컨트롤 패널에서 저장 형식을 PDF 로 바꾸거나 출력 방식을 이어붙이기로 고르면, 카드 덱 순서대로 파일 하나로 묶습니다.
+                {canStitch
+                  ? "위의 “세로 병합 / 가로 병합” 을 누르면 카드 덱 순서대로 한 장으로 이어붙인 미리보기가 여기에 표시됩니다. PDF 로 묶으려면 컨트롤 패널에서 저장 형식을 PDF 로 바꾸세요."
+                  : "서류를 2장 이상 올리면 이어붙이기를 선택할 수 있습니다. PDF 로 묶으려면 컨트롤 패널에서 저장 형식을 PDF 로 바꾸세요."}
               </p>
             </div>
           )}
@@ -174,4 +223,3 @@ function Info({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-

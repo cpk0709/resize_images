@@ -34,6 +34,11 @@ export interface MergeExportResult {
   height?: number;
   pageCount: number;
   fitsTarget: boolean;
+  /**
+   * 화면 미리보기용 래스터. 이미지 출력이면 결과 자체 1장, PDF 면 안에 들어간 페이지 JPEG 들(순서대로).
+   * PDF 를 브라우저에서 렌더링하지 않고도 결과를 보여주기 위함. 다운로드 대상은 항상 `blob`.
+   */
+  pagePreviews: Blob[];
 }
 
 const PDF_MAX_ATTEMPTS = 3;
@@ -67,7 +72,15 @@ async function exportStitchedImage(images: SourceImage[], direction: StitchDirec
     format: options.format === "png" ? "png" : "jpeg",
     signal: options.signal,
   });
-  return { blob: result.blob, mime: result.mime, width: result.width, height: result.height, pageCount: 1, fitsTarget: result.fitsTarget };
+  return {
+    blob: result.blob,
+    mime: result.mime,
+    width: result.width,
+    height: result.height,
+    pageCount: 1,
+    fitsTarget: result.fitsTarget,
+    pagePreviews: [result.blob],
+  };
 }
 
 // ── PDF ─────────────────────────────────────────────────────────────
@@ -96,7 +109,7 @@ async function assemblePdfWithinBudget(
 ): Promise<MergeExportResult> {
   const n = sources.length;
   let budget = Math.max(PDF_MIN_PAGE_BUDGET, (options.targetBytes - PDF_OVERHEAD_BYTES(n)) / n);
-  let best: { blob: Blob; fits: boolean } | null = null;
+  let best: { blob: Blob; fits: boolean; pages: Blob[] } | null = null;
 
   for (let attempt = 0; attempt < PDF_MAX_ATTEMPTS; attempt += 1) {
     if (options.signal?.aborted) throw new ImageProcessingError("ABORTED", "작업이 취소되었습니다.");
@@ -109,7 +122,7 @@ async function assemblePdfWithinBudget(
 
     const pdf = await buildPdf(pages, { pageSize, signal: options.signal });
     const fits = pdf.size <= options.targetBytes;
-    if (!best || pdf.size < best.blob.size) best = { blob: pdf, fits };
+    if (!best || pdf.size < best.blob.size) best = { blob: pdf, fits, pages: pages.map((p) => p.blob) };
     if (fits) break;
 
     // 초과 비율만큼 예산을 줄인다. 8% 여유를 더 둬 두 번째 시도에서 맞을 확률을 높인다.
@@ -118,5 +131,7 @@ async function assemblePdfWithinBudget(
     budget = nextBudget;
   }
 
-  return { blob: best!.blob, mime: OUTPUT_MIME.pdf, pageCount: n, fitsTarget: best!.fits };
+  // 루프가 최소 1회 돌므로 best 는 항상 존재한다.
+  const final = best as NonNullable<typeof best>;
+  return { blob: final.blob, mime: OUTPUT_MIME.pdf, pageCount: n, fitsTarget: final.fits, pagePreviews: final.pages };
 }

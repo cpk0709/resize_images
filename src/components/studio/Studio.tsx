@@ -217,9 +217,11 @@ export function Studio() {
         onRestoreOriginal={restoreOriginal}
         merge={
           merge.isActive
-            ? { layout: effectiveLayout, format, imageCount: total, targetMB: compression.targetMB, entry: merge.entry, onDownload: merge.download }
+            ? { layout: effectiveLayout, format, images: source.readyImages, targetMB: compression.targetMB, entry: merge.entry, onDownload: merge.download }
             : null
         }
+        layout={effectiveLayout}
+        onLayoutChange={setLayout}
         action={primaryAction}
         actionSummary={actionSummary}
         progress={merge.isActive ? undefined : { done: compression.doneCount, total: compression.total }}

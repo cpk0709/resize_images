@@ -24,6 +24,8 @@ export interface MergeOptions {
 export interface MergeEntry {
   status: "working" | "done" | "error";
   result?: MergeExportResult;
+  /** `result.pagePreviews` 의 object URL. 결과와 같은 수명을 가지며 훅이 해제한다. */
+  previewUrls?: string[];
   error?: string;
 }
 
@@ -55,6 +57,14 @@ export function useMergeExport(images: SourceImage[], options: MergeOptions) {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // 결과가 바뀌거나 컴포넌트가 사라지면 이전 결과의 미리보기 URL 을 해제한다.
+  useEffect(() => {
+    const urls = stored?.previewUrls;
+    return () => {
+      for (const u of urls ?? []) URL.revokeObjectURL(u);
+    };
+  }, [stored]);
+
   const run = useCallback(async () => {
     if (!isActive || images.length === 0) return;
     abortRef.current?.abort();
@@ -71,7 +81,7 @@ export function useMergeExport(images: SourceImage[], options: MergeOptions) {
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
-      setStored({ status: "done", result, signature: sig });
+      setStored({ status: "done", result, previewUrls: result.pagePreviews.map((b) => URL.createObjectURL(b)), signature: sig });
     } catch (err) {
       if (err instanceof ImageProcessingError && err.code === "ABORTED") return;
       console.error("[useMergeExport] 병합 출력 실패", err);
