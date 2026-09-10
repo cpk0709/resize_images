@@ -2,6 +2,7 @@
 
 import { ImageEditor, type EditorTool } from "@/components/editor/ImageEditor";
 import { MergeSummary } from "@/components/merge/MergeSummary";
+import { ActionBar, type PrimaryAction } from "@/components/studio/ActionBar";
 import { ActionButton } from "@/components/ui/Button";
 import type { CompressionEntry } from "@/hooks/useCompression";
 import type { MergeEntry } from "@/hooks/useMergeExport";
@@ -33,6 +34,10 @@ interface PreviewPanelProps {
   onRestoreOriginal: () => void;
   /** 병합 출력(이어붙이기/PDF)이 활성이면 요약 카드를 보여준다. null 이면 파일별 출력 모드. */
   merge: MergePanelProps | null;
+  /** 패널 하단 액션 바 (주요 동작). 편집 중에는 숨긴다. */
+  action: PrimaryAction;
+  actionSummary: string;
+  progress?: { done: number; total: number };
 }
 
 /**
@@ -51,6 +56,9 @@ export function PreviewPanel({
   onCancelEdit,
   onRestoreOriginal,
   merge,
+  action,
+  actionSummary,
+  progress,
 }: PreviewPanelProps) {
   const image = item?.image;
   const editing = editingTool !== null && image;
@@ -150,6 +158,8 @@ export function PreviewPanel({
           </div>
         </div>
       )}
+
+      {!editing && <ActionBar action={action} summary={actionSummary} progress={progress} />}
     </section>
   );
 }

@@ -3,7 +3,7 @@
 import { useId } from "react";
 import { PresetList } from "@/components/studio/PresetList";
 import { SizeMeter, type SizeSample } from "@/components/studio/SizeMeter";
-import { ActionButton, ToggleButton } from "@/components/ui/Button";
+import { ToggleButton } from "@/components/ui/Button";
 import {
   OUTPUT_FORMATS,
   OUTPUT_LAYOUTS,
@@ -15,12 +15,6 @@ import {
 } from "@/lib/constants";
 import { formatBytes } from "@/lib/format";
 import { presetDefaultMB, type SubmissionPreset } from "@/lib/presets";
-
-export type PrimaryAction =
-  | { kind: "disabled"; label: string }
-  | { kind: "run"; label: string; onClick: () => void }
-  | { kind: "cancel"; label: string; onClick: () => void }
-  | { kind: "download"; label: string; onClick: () => void };
 
 interface ControlPanelProps {
   presets: readonly SubmissionPreset[];
@@ -38,9 +32,8 @@ interface ControlPanelProps {
   imageCount: number;
   limitBytes: number | null;
   samples: SizeSample[];
+  /** 처리 중이면 옵션 변경을 막는다 */
   isRunning: boolean;
-  progress: { done: number; total: number };
-  primaryAction: PrimaryAction;
 }
 
 const FORMAT_LABEL: Record<OutputFormat, string> = { jpeg: "JPG", png: "PNG", pdf: "PDF" };
@@ -67,8 +60,6 @@ export function ControlPanel({
   limitBytes,
   samples,
   isRunning,
-  progress,
-  primaryAction,
 }: ControlPanelProps) {
   const targetInputId = useId();
   const defaultMB = presetDefaultMB(selectedPreset);
@@ -186,15 +177,6 @@ export function ControlPanel({
         <h3 className="mb-3 text-lg font-bold">라이브 용량 신호등</h3>
         <SizeMeter limitBytes={limitBytes} samples={samples} />
       </section>
-
-      <div className="mt-auto border-t border-line pt-5">
-        {isRunning && progress.total > 1 && (
-          <p className="mb-2 text-sm text-muted" aria-live="polite">
-            최적화 중 {progress.done}/{progress.total}
-          </p>
-        )}
-        <PrimaryButton action={primaryAction} />
-      </div>
     </aside>
   );
 }
@@ -219,31 +201,3 @@ function layoutHint(layout: OutputLayout, format: OutputFormat, imageCount: numb
   return `카드 덱 순서(1 → ${imageCount})대로 ${layout === "vertical" ? "위에서 아래로" : "왼쪽에서 오른쪽으로"} 한 장에 이어붙입니다. 너비(세로) 또는 높이(가로)를 가장 큰 장에 맞춥니다.`;
 }
 
-function PrimaryButton({ action }: { action: PrimaryAction }) {
-  switch (action.kind) {
-    case "disabled":
-      return (
-        <ActionButton size="lg" fullWidth disabled>
-          {action.label}
-        </ActionButton>
-      );
-    case "run":
-      return (
-        <ActionButton size="lg" fullWidth onClick={action.onClick} trailingIcon="▶">
-          {action.label}
-        </ActionButton>
-      );
-    case "cancel":
-      return (
-        <ActionButton size="lg" fullWidth variant="ghost" onClick={action.onClick}>
-          {action.label}
-        </ActionButton>
-      );
-    case "download":
-      return (
-        <ActionButton size="lg" fullWidth onClick={action.onClick} trailingIcon="↗">
-          {action.label}
-        </ActionButton>
-      );
-  }
-}

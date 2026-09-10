@@ -1,5 +1,7 @@
 "use client";
 
+import type { ComponentType, SVGProps } from "react";
+import { IconBuilding, IconPlus, IconReceipt, IconScale } from "@/components/ui/icons";
 import { formatBytes } from "@/lib/format";
 import type { SubmissionPreset } from "@/lib/presets";
 
@@ -10,11 +12,11 @@ interface PresetListProps {
   disabled?: boolean;
 }
 
-const AGENCY_ICON: Record<SubmissionPreset["agency"], string> = {
-  government: "🏛️",
-  court: "⚖️",
-  tax: "🧾",
-  custom: "＋",
+const AGENCY_ICON: Record<SubmissionPreset["agency"], ComponentType<SVGProps<SVGSVGElement>>> = {
+  government: IconBuilding,
+  court: IconScale,
+  tax: IconReceipt,
+  custom: IconPlus,
 };
 
 /** 제출처 프리셋 목록. 선택만 담당하고, 선택 결과를 어떻게 쓰는지는 상위가 결정한다. */
@@ -23,6 +25,7 @@ export function PresetList({ presets, selectedId, onSelect, disabled = false }: 
     <ul className="space-y-2" aria-label="제출처 프리셋">
       {presets.map((preset) => {
         const active = preset.id === selectedId;
+        const Icon = AGENCY_ICON[preset.agency];
         return (
           <li key={preset.id}>
             <button
@@ -38,8 +41,8 @@ export function PresetList({ presets, selectedId, onSelect, disabled = false }: 
                   : "border-line bg-panel hover:border-navy/40 hover:bg-surface",
               ].join(" ")}
             >
-              <span aria-hidden="true" className="w-6 text-center text-lg leading-none">
-                {AGENCY_ICON[preset.agency]}
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${active ? "bg-navy text-white" : "bg-surface text-navy"}`}>
+                <Icon className="h-4 w-4" />
               </span>
               <span className="min-w-0 flex-1 leading-tight">
                 <span className="block">{preset.name}</span>

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import type { EditorTool } from "@/components/editor/ImageEditor";
+import type { PrimaryAction } from "@/components/studio/ActionBar";
 import { CardDeck } from "@/components/studio/CardDeck";
-import { ControlPanel, type PrimaryAction } from "@/components/studio/ControlPanel";
+import { ControlPanel } from "@/components/studio/ControlPanel";
 import { PreviewPanel } from "@/components/studio/PreviewPanel";
 import type { SizeSample } from "@/components/studio/SizeMeter";
 import { Dropzone } from "@/components/uploader/Dropzone";
@@ -11,10 +12,12 @@ import { useCompression } from "@/hooks/useCompression";
 import { useMergeExport } from "@/hooks/useMergeExport";
 import { useSourceImages } from "@/hooks/useSourceImages";
 import { MB, type OutputFormat, type OutputLayout } from "@/lib/constants";
+import { formatBytes } from "@/lib/format";
 import type { EditResult } from "@/lib/image/edit";
 import { DEFAULT_PRESET_ID, findPreset, presetDefaultMB, SUBMISSION_PRESETS, type SubmissionPreset } from "@/lib/presets";
 
 const FORMAT_LABEL: Record<OutputFormat, string> = { jpeg: "JPG", png: "PNG", pdf: "PDF" };
+const LAYOUT_LABEL: Record<OutputLayout, string> = { separate: "개별 파일", vertical: "세로 이어붙이기", horizontal: "가로 이어붙이기" };
 
 /**
  * 스튜디오 조립 컴포넌트. 세 패널(컨트롤 / 편집 캔버스 / 미리보기)을 page 의 grid 안에 형제로 렌더한다.
@@ -124,6 +127,14 @@ export function Studio() {
     return { kind: "run", label: "최적화 시작", onClick: compression.run };
   })();
 
+  /** 액션 바 왼쪽의 한 줄 요약: 무엇을 어떤 기준으로 만드는지 */
+  const actionSummary =
+    total === 0
+      ? "서류를 추가하면 여기서 최적화하고 내려받습니다."
+      : merge.isActive
+        ? `${FORMAT_LABEL[format]} · ${format === "pdf" && effectiveLayout === "separate" ? "장마다 한 페이지" : LAYOUT_LABEL[effectiveLayout]} · ${total}장 → 파일 1개 · 목표 ${formatBytes(limitBytes, 0)}`
+        : `${FORMAT_LABEL[format]} · 개별 파일 ${total}장 · 파일마다 목표 ${formatBytes(limitBytes, 0)}`;
+
   return (
     <>
       <ControlPanel
@@ -141,8 +152,6 @@ export function Studio() {
         limitBytes={limitBytes}
         samples={samples}
         isRunning={isRunning}
-        progress={{ done: compression.doneCount, total: compression.total }}
-        primaryAction={primaryAction}
       />
 
       <section className="flex flex-col gap-4 rounded-card border border-line bg-panel p-5" aria-label="편집 캔버스">
@@ -211,6 +220,9 @@ export function Studio() {
             ? { layout: effectiveLayout, format, imageCount: total, targetMB: compression.targetMB, entry: merge.entry, onDownload: merge.download }
             : null
         }
+        action={primaryAction}
+        actionSummary={actionSummary}
+        progress={merge.isActive ? undefined : { done: compression.doneCount, total: compression.total }}
       />
     </>
   );

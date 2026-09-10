@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type DragEvent, type ChangeEvent } from "react";
+import { IconUpload } from "@/components/ui/icons";
 import { ACCEPT_ATTRIBUTE, MAX_INPUT_FILES } from "@/lib/constants";
 
 interface DropzoneProps {
@@ -87,8 +88,8 @@ export function Dropzone({ onFiles, disabled = false, compact = false }: Dropzon
         disabled ? "opacity-60" : "",
       ].join(" ")}
     >
-      <span aria-hidden="true" className="mb-2 text-2xl text-muted">
-        ⬆
+      <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-panel text-navy shadow-sm">
+        <IconUpload className="h-5 w-5" />
       </span>
       <p className="text-[15px] font-medium">여기에 서류를 드래그하거나 클릭하여 추가하세요</p>
       <p className="mt-1 text-xs text-muted">
