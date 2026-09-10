@@ -3,6 +3,7 @@
 import { useId } from "react";
 import { PresetList } from "@/components/studio/PresetList";
 import { SizeMeter, type SizeSample } from "@/components/studio/SizeMeter";
+import { ActionButton, ToggleButton } from "@/components/ui/Button";
 import {
   OUTPUT_FORMATS,
   OUTPUT_LAYOUTS,
@@ -218,67 +219,31 @@ function layoutHint(layout: OutputLayout, format: OutputFormat, imageCount: numb
   return `카드 덱 순서(1 → ${imageCount})대로 ${layout === "vertical" ? "위에서 아래로" : "왼쪽에서 오른쪽으로"} 한 장에 이어붙입니다. 너비(세로) 또는 높이(가로)를 가장 큰 장에 맞춥니다.`;
 }
 
-function ToggleButton({
-  active,
-  disabled,
-  title,
-  onClick,
-  className = "",
-  children,
-}: {
-  active: boolean;
-  disabled?: boolean;
-  title?: string;
-  onClick: () => void;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      disabled={disabled}
-      title={title}
-      onClick={onClick}
-      className={[
-        "rounded-lg border px-3.5 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-        active ? "border-navy bg-navy text-white" : "border-line bg-panel hover:bg-surface",
-        className,
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  );
-}
-
 function PrimaryButton({ action }: { action: PrimaryAction }) {
-  const base = "flex w-full items-center justify-between rounded-xl px-5 py-3.5 text-base font-semibold transition-colors";
   switch (action.kind) {
     case "disabled":
       return (
-        <button type="button" disabled className={`${base} cursor-not-allowed bg-line text-muted`}>
+        <ActionButton size="lg" fullWidth disabled>
           {action.label}
-        </button>
+        </ActionButton>
       );
     case "run":
       return (
-        <button type="button" onClick={action.onClick} className={`${base} bg-accent text-white hover:bg-accent/90`}>
+        <ActionButton size="lg" fullWidth onClick={action.onClick} trailingIcon="▶">
           {action.label}
-          <span aria-hidden="true">▶</span>
-        </button>
+        </ActionButton>
       );
     case "cancel":
       return (
-        <button type="button" onClick={action.onClick} className={`${base} border border-line bg-panel hover:bg-surface`}>
+        <ActionButton size="lg" fullWidth variant="ghost" onClick={action.onClick}>
           {action.label}
-        </button>
+        </ActionButton>
       );
     case "download":
       return (
-        <button type="button" onClick={action.onClick} className={`${base} bg-navy text-white hover:bg-navy-hover`}>
+        <ActionButton size="lg" fullWidth onClick={action.onClick} trailingIcon="↗">
           {action.label}
-          <span aria-hidden="true">↗</span>
-        </button>
+        </ActionButton>
       );
   }
 }

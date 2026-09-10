@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Canvas, FabricObject, Rect, TPointerEventInfo } from "fabric";
+import { ActionButton, ToggleButton } from "@/components/ui/Button";
 import { decodeToBitmap } from "@/lib/image/decode";
 import { toUserMessage } from "@/lib/image/errors";
 import {
@@ -469,9 +470,9 @@ export function ImageEditor({ image, initialTool, onApply, onCancel }: ImageEdit
   return (
     <div className="flex h-full flex-col gap-3" data-testid="image-editor">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <ToolButton active={tool === "mask"} disabled={disabled} onClick={() => setTool("mask")}>
+        <ToggleButton active={tool === "mask"} disabled={disabled} onClick={() => setTool("mask")}>
           ■ 단색 박스
-        </ToolButton>
+        </ToggleButton>
         <label className="flex items-center gap-1 text-xs text-muted" title="단색 박스 색상">
           <input
             type="color"
@@ -483,29 +484,29 @@ export function ImageEditor({ image, initialTool, onApply, onCancel }: ImageEdit
           />
           색상
         </label>
-        <ToolButton active={tool === "mosaic"} disabled={disabled} onClick={() => setTool("mosaic")}>
+        <ToggleButton active={tool === "mosaic"} disabled={disabled} onClick={() => setTool("mosaic")}>
           ▦ 모자이크
-        </ToolButton>
-        <ToolButton active={tool === "crop"} disabled={disabled} onClick={() => setTool("crop")}>
+        </ToggleButton>
+        <ToggleButton active={tool === "crop"} disabled={disabled} onClick={() => setTool("crop")}>
           ⌗ 크롭
-        </ToolButton>
-        <ToolButton active={tool === "select"} disabled={disabled} onClick={() => setTool("select")}>
+        </ToggleButton>
+        <ToggleButton active={tool === "select"} disabled={disabled} onClick={() => setTool("select")}>
           ↖ 선택
-        </ToolButton>
+        </ToggleButton>
         <span className="mx-1 h-5 w-px bg-line" aria-hidden="true" />
-        <ToolButton disabled={disabled} onClick={() => rotate(270)} title="왼쪽으로 90° 회전 (영역 유지)">
+        <ActionButton variant="secondary" size="sm" disabled={disabled} onClick={() => rotate(270)} title="왼쪽으로 90° 회전 (영역 유지)">
           ↺ 90°
-        </ToolButton>
-        <ToolButton disabled={disabled} onClick={() => rotate(90)} title="오른쪽으로 90° 회전 (영역 유지)">
+        </ActionButton>
+        <ActionButton variant="secondary" size="sm" disabled={disabled} onClick={() => rotate(90)} title="오른쪽으로 90° 회전 (영역 유지)">
           ↻ 90°
-        </ToolButton>
+        </ActionButton>
         <span className="mx-1 h-5 w-px bg-line" aria-hidden="true" />
-        <ToolButton disabled={disabled} onClick={removeSelected}>
+        <ActionButton variant="secondary" size="sm" disabled={disabled} onClick={removeSelected}>
           선택 삭제
-        </ToolButton>
-        <ToolButton disabled={disabled || regionCount === 0} onClick={clearAll}>
+        </ActionButton>
+        <ActionButton variant="secondary" size="sm" disabled={disabled || regionCount === 0} onClick={clearAll}>
           모두 지우기
-        </ToolButton>
+        </ActionButton>
       </div>
 
       <p className="text-xs text-muted" aria-live="polite">
@@ -524,22 +525,12 @@ export function ImageEditor({ image, initialTool, onApply, onCancel }: ImageEdit
       )}
 
       <div className="flex items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={busy === "applying"}
-          className="rounded-lg border border-line px-4 py-2 text-sm font-medium hover:bg-surface disabled:opacity-50"
-        >
+        <ActionButton variant="ghost" onClick={onCancel} disabled={busy === "applying"}>
           취소
-        </button>
-        <button
-          type="button"
-          onClick={apply}
-          disabled={disabled}
-          className="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-hover disabled:opacity-50"
-        >
+        </ActionButton>
+        <ActionButton onClick={apply} disabled={disabled}>
           적용
-        </button>
+        </ActionButton>
       </div>
     </div>
   );
@@ -547,34 +538,4 @@ export function ImageEditor({ image, initialTool, onApply, onCancel }: ImageEdit
 
 function countRegions(canvas: Canvas, meta: WeakMap<FabricObject, RegionMeta>): number {
   return canvas.getObjects().filter((o) => meta.has(o)).length;
-}
-
-function ToolButton({
-  active = false,
-  disabled,
-  onClick,
-  title,
-  children,
-}: {
-  active?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-  title?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      disabled={disabled}
-      title={title}
-      onClick={onClick}
-      className={[
-        "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-40",
-        active ? "border-navy bg-navy text-white" : "border-line bg-panel hover:bg-surface",
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  );
 }

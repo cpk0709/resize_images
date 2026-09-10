@@ -2,6 +2,7 @@
 
 import { ImageEditor, type EditorTool } from "@/components/editor/ImageEditor";
 import { MergeSummary } from "@/components/merge/MergeSummary";
+import { ActionButton } from "@/components/ui/Button";
 import type { CompressionEntry } from "@/hooks/useCompression";
 import type { MergeEntry } from "@/hooks/useMergeExport";
 import type { UploadItem } from "@/hooks/useSourceImages";
@@ -60,9 +61,15 @@ export function PreviewPanel({
         <h2 className="text-xl font-bold">{editing ? "편집" : "시각적 병합 및 가리기"}</h2>
         {!editing && image && (
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <EditButton onClick={() => onStartEdit("mask")}>■ 가리기</EditButton>
-            <EditButton onClick={() => onStartEdit("crop")}>⌗ 크롭</EditButton>
-            <EditButton onClick={() => onStartEdit("select")}>↻ 회전·편집</EditButton>
+            <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("mask")}>
+              ■ 가리기
+            </ActionButton>
+            <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("crop")}>
+              ⌗ 크롭
+            </ActionButton>
+            <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("select")}>
+              ↻ 회전·편집
+            </ActionButton>
             {item?.edited && (
               <button type="button" onClick={onRestoreOriginal} className="text-xs text-muted underline hover:text-ink">
                 원본으로 되돌리기
@@ -144,18 +151,6 @@ export function PreviewPanel({
         </div>
       )}
     </section>
-  );
-}
-
-function EditButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-lg border border-line bg-panel px-3 py-1.5 font-medium hover:border-navy/40 hover:bg-surface"
-    >
-      {children}
-    </button>
   );
 }
 
