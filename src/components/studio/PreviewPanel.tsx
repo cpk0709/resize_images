@@ -19,6 +19,10 @@ export interface MergePanelProps {
   format: OutputFormat;
   /** 카드 덱 순서 그대로의 준비된 이미지들 */
   images: SourceImage[];
+  /** 편집이 적용된 장들 */
+  editedIds: ReadonlySet<string>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
   targetMB: number;
   entry: MergeEntry | null;
   onDownload: () => void;
@@ -134,6 +138,9 @@ export function PreviewPanel({
               images={merge.images}
               layout={merge.layout}
               format={merge.format}
+              editedIds={merge.editedIds}
+              selectedId={merge.selectedId}
+              onSelect={merge.onSelect}
               result={merge.entry?.status === "done" ? merge.entry.result ?? null : null}
               resultUrls={merge.entry?.status === "done" ? merge.entry.previewUrls ?? [] : []}
             />

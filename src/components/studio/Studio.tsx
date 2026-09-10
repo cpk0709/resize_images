@@ -217,7 +217,17 @@ export function Studio() {
         onRestoreOriginal={restoreOriginal}
         merge={
           merge.isActive
-            ? { layout: effectiveLayout, format, images: source.readyImages, targetMB: compression.targetMB, entry: merge.entry, onDownload: merge.download }
+            ? {
+                layout: effectiveLayout,
+                format,
+                images: source.readyImages,
+                editedIds: new Set(source.items.filter((it) => it.edited).map((it) => it.id)),
+                selectedId: selectedItem?.id ?? null,
+                onSelect: setSelectedId,
+                targetMB: compression.targetMB,
+                entry: merge.entry,
+                onDownload: merge.download,
+              }
             : null
         }
         layout={effectiveLayout}
