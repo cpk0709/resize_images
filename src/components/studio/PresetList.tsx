@@ -41,7 +41,9 @@ export function PresetList({ presets, selectedId, onSelect, disabled = false }: 
                   : "border-line bg-panel hover:border-navy/40 hover:bg-surface",
               ].join(" ")}
             >
-              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${active ? "bg-navy text-white" : "bg-surface text-navy"}`}>
+              <span
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${active ? "bg-gradient-to-b from-navy-hover to-navy text-white" : "bg-surface text-navy"}`}
+              >
                 <Icon className="h-4 w-4" />
               </span>
               <span className="min-w-0 flex-1 leading-tight">

@@ -21,6 +21,9 @@
   --color-warn-soft: #fdf3e2;
   --color-fail: #dc2626;
   --color-fail-soft: #fdecec;
+  /* 최종 추출 버튼 전용 그라데이션. 신호등 "통과" 와 같은 초록 계열 → 틸. 다른 UI 요소에는 쓰지 않는다. */
+  --color-hero-start: #15803d;
+  --color-hero-end: #0e7490;
 
   --font-sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", ui-sans-serif,
     system-ui, -apple-system, sans-serif;
