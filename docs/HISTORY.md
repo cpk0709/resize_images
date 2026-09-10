@@ -16,6 +16,7 @@
 - **로컬에서 아직 안 한 것:** DB 마이그레이션(`prisma migrate dev --name init`), S3 자격증명 연결. 로컬 `.env` 에는 CRON_SECRET 만 채워져 있음
 - **프로덕션 헤더:** `next start` 로 실측 완료 (세션 11) — `no-store`, `nosniff`, `DENY`, `no-referrer` 적용. 실서비스 URL 에서 한 번 더 확인할 것.
 - **원격 저장소:** `https://github.com/cpk0709/resize_images.git` (origin, 브랜치 main)
+- **임시 배포:** GitHub Pages `https://cpk0709.github.io/resize_images/` — main push 마다 `.github/workflows/deploy-pages.yml` 이 정적 export(`npm run build:pages`)를 배포. 정적 호스팅이라 보안 헤더 미적용, 서버 라우트 없음. 정식 배포는 Vercel 예정.
 
 ## 다음 할 일 (우선순위 순)
 
@@ -40,6 +41,13 @@ Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한�
 ---
 
 ## 타임라인 (최신이 위)
+
+### 2026-09-10 · 세션 17 · GitHub Pages 임시 배포 (정적 export + Actions)
+- **한 것:** `next.config.ts` 가 `GITHUB_PAGES=true` 일 때만 `output: "export"`, `basePath: "/resize_images"`, `trailingSlash: true`, `images.unoptimized`. `scripts/build-pages.mjs`(`npm run build:pages`): 빌드 동안 `src/app/api` 를 `.pages-excluded-api` 로 옮기고 반드시 복원(try/finally, SIGINT), `.next/dev/types` 제거(dev 산출물이 api 라우트를 참조해 타입 검사를 깨뜨림), `out/.nojekyll` 추가, Windows 에서 dev 서버가 디렉터리를 잡고 있을 때(EPERM) 안내. `.github/workflows/deploy-pages.yml`: main push 마다 typecheck·lint → build:pages → configure-pages(enablement) → upload → deploy. README "임시 배포 (GitHub Pages)" 절. create-next-app 잔여 SVG(`public/*.svg`) 삭제. 푸터·개인정보 페이지 `Link` 에 `prefetch={false}`.
+- **결정:** (1) 서버 라우트 제외는 런타임 분기가 아니라 빌드 시 디렉터리 격리. `export const dynamic` 은 리터럴이어야 하고 `force-static` 은 Vercel 크론 인증을 깨뜨리기 때문. (2) `trailingSlash: true` 유지 — `/privacy` 와 `/privacy/` 둘 다 동작(Pages 가 301). false 면 `/privacy/` 가 404. (3) 세그먼트 프리페치 파일 경로 불일치(export 는 `privacy/__next.privacy/__PAGE__.txt` 디렉터리로 쓰고 클라이언트는 `privacy/__next.privacy.__PAGE__.txt` 를 요청) 는 Next 16 export 의 문제로 보여 `prefetch={false}` 로 우회. 클릭 이동은 `privacy/index.txt` 로 정상. (4) 정적 호스팅은 응답 헤더를 못 넣으므로 보안 헤더는 Vercel 배포에서만. 임시 배포라 README 에 명시.
+- **문제/해결:** Windows 에서 `next dev` 실행 중 `src/app/api` rename 이 EPERM → dev 종료 후 빌드(스크립트가 안내). 타입 검사가 `.next/dev/types/validator.ts` 때문에 실패 → 빌드 전 삭제. 검증용 정적 서버는 Pages 규칙(디렉터리 → index.html, 슬래시 없는 디렉터리 → 301, 확장자 없는 경로 → .html)을 그대로 구현해 확인.
+- **검증(로컬 정적 서버 http://localhost:8080/resize_images/):** 라우팅 `/`200, `/privacy`→301→`/privacy/`200, 없는 경로 404. 스튜디오 30 / 모바일 15 / 병합 37 / 에디터 30 / 병합 중 편집 23 스모크 전부 통과(정적 export 대상). 클라이언트 이동 프로브(메인 ↔ 개인정보) 통과. `tsc`/`lint` 통과.
+- **다음:** push 후 Actions 실행 확인 → https://cpk0709.github.io/resize_images/ 에서 스모크 재실행 → 파비콘·SEO(`metadataBase` 는 이 주소로).
 
 ### 2026-09-10 · 세션 16 · 모바일 최적화 레이아웃 + 레이아웃 뷰포트 확장 결함 수정
 - **한 것:** 모바일(lg 미만) 전용 배치 — 순서를 `order-*` 로 서류 추가(편집 캔버스) → 설정 → 미리보기로, 최종 버튼은 화면 하단 고정 바(`ActionBar` 를 데스크톱용 `hidden lg:flex` / 모바일용 `fixed bottom-0 lg:hidden` 두 벌로, `main pb-28`), 프리셋은 가로 스크롤 칩(`-mx-4 overflow-x-auto snap-x`, 260px), 드롭존 문구를 "탭해서 서류 사진 선택 또는 촬영" 으로, 카드 덱 2열·탭 타깃 확대·삭제 버튼 항상 표시, 미리보기 높이 50vh, 헤더 배지 짧은 문구, 헤더/푸터 이모지(🔒 🛡️) → `IconLock`/`IconShield`. 패널에 `className` prop 추가(Studio 가 배치 결정).
