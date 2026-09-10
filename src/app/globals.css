@@ -1,37 +1,63 @@
 @import "tailwindcss";
 
 /*
- * 디자인 토큰 (docs/design 시안 기준). 라이트 테마 단일.
- * - navy: 제목·주요 버튼. pass/fail: 용량 신호등. surface: 페이지 배경. panel: 카드 배경.
- * Tailwind v4 는 @theme 변수를 유틸리티(bg-navy, text-pass ...)로 노출한다.
+ * 디자인 토큰 (docs/design/studio-concept-v2.png 기준). 라이트 테마 단일.
+ * - brand: 주요 동작·선택 상태·링크. 한 가지 파랑만 쓴다 (채움 = brand, 배경 = brand-soft, 테두리/링 = brand-ring).
+ * - ink/muted/subtle: 본문 / 보조 / 비활성 텍스트의 3단계.
+ * - pass/warn/fail: 용량 신호등과 상태 배지. 각자 soft 배경을 짝으로 가진다.
+ * - surface: 페이지 배경, panel: 카드 배경, line: 테두리.
+ * Tailwind v4 는 @theme 변수를 유틸리티(bg-brand, text-muted ...)로 노출한다.
  */
 @theme {
-  --color-surface: #f3f5f9;
+  --color-surface: #f5f7fb;
   --color-panel: #ffffff;
-  --color-line: #e3e7ee;
-  --color-ink: #1b2437;
-  --color-muted: #6b7486;
-  --color-navy: #1e2a44;
-  --color-navy-hover: #2b3a5e;
-  --color-accent: #2563eb;
-  --color-accent-soft: #e8f0fe;
+  --color-line: #e5e9f0;
+  --color-line-strong: #cbd3df;
+  --color-ink: #1f2937;
+  --color-ink-strong: #111827;
+  --color-muted: #6b7280;
+  --color-subtle: #9aa3b2;
+  --color-brand: #2563eb;
+  --color-brand-hover: #1d4ed8;
+  --color-brand-soft: #eef4ff;
+  --color-brand-ring: #bfd3fe;
   --color-pass: #16a34a;
-  --color-pass-soft: #e7f6ec;
+  --color-pass-soft: #e9f8ee;
   --color-warn: #d97706;
-  --color-warn-soft: #fdf3e2;
+  --color-warn-soft: #fff5e6;
   --color-fail: #dc2626;
-  --color-fail-soft: #fdecec;
-  /* 최종 추출 버튼 전용 그라데이션. 신호등 "통과" 와 같은 초록 계열 → 틸. 다른 UI 요소에는 쓰지 않는다. */
-  --color-hero-start: #15803d;
-  --color-hero-end: #0e7490;
+  --color-fail-soft: #fdeeee;
 
-  --font-sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", ui-sans-serif,
-    system-ui, -apple-system, sans-serif;
+  /* layout.tsx 의 next/font 가 --font-inter / --font-noto-kr 를 <html> 에 넣는다. 라틴·숫자는 Inter, 한글은 Noto Sans KR. */
+  --font-sans: var(--font-inter), var(--font-noto-kr), "Pretendard Variable", Pretendard, "Apple SD Gothic Neo",
+    "Malgun Gothic", ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  --radius-card: 14px;
+  --radius-card: 12px;
+
+  --shadow-card: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-float: 0 8px 24px rgba(17, 24, 39, 0.1);
 }
 
 html {
   background: var(--color-surface);
   color: var(--color-ink);
+  /* 한글 본문은 자간을 살짝 좁히고 숫자는 고정폭 정렬(용량 수치가 열에서 흔들리지 않게) */
+  font-feature-settings: "tnum";
+}
+
+/* 패널 안쪽 스크롤(xl 앱 셸)용 얇은 스크롤바. 기본 굵은 막대가 카드 안 콘텐츠를 밀어내지 않게. */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+/* number 입력의 스핀 버튼 제거 (단위 접미어 "MB" 와 겹친다) */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }

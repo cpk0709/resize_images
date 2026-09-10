@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import type { Canvas, FabricObject, Rect, TPointerEventInfo } from "fabric";
 import { ActionButton, IconButton, ToggleButton } from "@/components/ui/Button";
-import { IconFit, IconHand, IconMinus, IconPlus } from "@/components/ui/icons";
+import { IconCrop, IconCursor, IconFit, IconGrid, IconHand, IconMinus, IconPlus, IconRotateLeft, IconRotateRight, IconSquareFill, IconTrash } from "@/components/ui/icons";
 import { decodeToBitmap } from "@/lib/image/decode";
 import { toUserMessage } from "@/lib/image/errors";
 import {
@@ -559,40 +559,40 @@ export function ImageEditor({ image, initialTool, onApply, onCancel }: ImageEdit
 
   return (
     <div className="flex h-full flex-col gap-3" data-testid="image-editor">
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <ToggleButton active={tool === "mask"} disabled={disabled} onClick={() => setTool("mask")}>
-          ■ 단색 박스
+      <div className="flex flex-wrap items-center gap-1.5">
+        <ToggleButton active={tool === "mask"} disabled={disabled} onClick={() => setTool("mask")} leadingIcon={<IconSquareFill className="h-3.5 w-3.5" />}>
+          단색 박스
         </ToggleButton>
-        <label className="flex items-center gap-1 text-xs text-muted" title="단색 박스 색상">
+        <label className="flex items-center gap-1 text-[11px] text-muted" title="단색 박스 색상">
           <input
             type="color"
             value={maskColor}
             disabled={disabled}
             onChange={(e) => setMaskColor(e.target.value)}
             aria-label="단색 박스 색상"
-            className="h-7 w-9 cursor-pointer rounded border border-line bg-panel p-0.5"
+            className="h-8 w-9 cursor-pointer rounded-lg border border-line bg-panel p-0.5"
           />
           색상
         </label>
-        <ToggleButton active={tool === "mosaic"} disabled={disabled} onClick={() => setTool("mosaic")}>
-          ▦ 모자이크
+        <ToggleButton active={tool === "mosaic"} disabled={disabled} onClick={() => setTool("mosaic")} leadingIcon={<IconGrid className="h-3.5 w-3.5" />}>
+          모자이크
         </ToggleButton>
-        <ToggleButton active={tool === "crop"} disabled={disabled} onClick={() => setTool("crop")}>
-          ⌗ 크롭
+        <ToggleButton active={tool === "crop"} disabled={disabled} onClick={() => setTool("crop")} leadingIcon={<IconCrop className="h-3.5 w-3.5" />}>
+          크롭
         </ToggleButton>
-        <ToggleButton active={tool === "select"} disabled={disabled} onClick={() => setTool("select")}>
-          ↖ 선택
+        <ToggleButton active={tool === "select"} disabled={disabled} onClick={() => setTool("select")} leadingIcon={<IconCursor className="h-3.5 w-3.5" />}>
+          선택
         </ToggleButton>
-        <ActionButton variant="secondary" size="sm" disabled={disabled} onClick={() => rotate(270)} title="왼쪽으로 90° 회전 (영역 유지)">
-          ↺ 90°
+        <ActionButton variant="secondary" size="sm" disabled={disabled} onClick={() => rotate(270)} title="왼쪽으로 90° 회전 (영역 유지)" leadingIcon={<IconRotateLeft className="h-3.5 w-3.5" />}>
+          왼쪽 90°
         </ActionButton>
-        <ActionButton variant="secondary" size="sm" disabled={disabled} onClick={() => rotate(90)} title="오른쪽으로 90° 회전 (영역 유지)">
-          ↻ 90°
+        <ActionButton variant="secondary" size="sm" disabled={disabled} onClick={() => rotate(90)} title="오른쪽으로 90° 회전 (영역 유지)" leadingIcon={<IconRotateRight className="h-3.5 w-3.5" />}>
+          오른쪽 90°
         </ActionButton>
         <ActionButton variant="secondary" size="sm" disabled={disabled} onClick={removeSelected}>
           선택 삭제
         </ActionButton>
-        <ActionButton variant="secondary" size="sm" disabled={disabled || regionCount === 0} onClick={clearAll}>
+        <ActionButton variant="secondary" size="sm" disabled={disabled || regionCount === 0} onClick={clearAll} leadingIcon={<IconTrash className="h-3.5 w-3.5" />}>
           모두 지우기
         </ActionButton>
 
@@ -616,7 +616,7 @@ export function ImageEditor({ image, initialTool, onApply, onCancel }: ImageEdit
         </div>
       </div>
 
-      <p className="text-xs text-muted" aria-live="polite">
+      <p className="text-[11px] leading-relaxed text-muted" aria-live="polite">
         {busy === "loading" ? "편집기 불러오는 중…" : busy === "rotating" ? "회전 중…" : busy === "applying" ? "적용 중…" : panMode ? PAN_HINT : TOOL_HINT[tool]}
         {!busy && regionCount > 0 && ` · 영역 ${regionCount}개${hasCrop ? " (크롭 포함)" : ""}`}
       </p>
@@ -647,13 +647,13 @@ export function ImageEditor({ image, initialTool, onApply, onCancel }: ImageEdit
       </div>
 
       {error && (
-        <p className="text-sm text-fail" role="alert">
+        <p className="text-[13px] text-fail" role="alert">
           {error}
         </p>
       )}
 
       <div className="flex items-center justify-end gap-2">
-        <ActionButton variant="ghost" onClick={onCancel} disabled={busy === "applying"}>
+        <ActionButton variant="secondary" onClick={onCancel} disabled={busy === "applying"}>
           취소
         </ActionButton>
         <ActionButton onClick={apply} disabled={disabled}>

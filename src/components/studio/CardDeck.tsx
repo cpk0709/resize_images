@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, type DragEvent } from "react";
+import { useState, type DragEvent, type ReactNode } from "react";
 import { CompressionResultLine } from "@/components/compress/CompressionResultLine";
 import type { EditorTool } from "@/components/editor/ImageEditor";
+import { ActionButton } from "@/components/ui/Button";
+import { IconChevronLeft, IconChevronRight, IconClose, IconCrop, IconEyeOff } from "@/components/ui/icons";
 import type { CompressionEntry } from "@/hooks/useCompression";
 import type { UploadItem } from "@/hooks/useSourceImages";
 import { formatBytes } from "@/lib/format";
@@ -18,7 +20,7 @@ interface CardDeckProps {
   entries: Record<string, CompressionEntry>;
   targetMB: number;
   onDownload: (image: SourceImage) => void;
-  /** 카드의 [가리기] [크롭] 칩. 해당 카드를 선택하고 그 도구로 에디터를 연다. */
+  /** 카드의 [가리기] [크롭] 버튼. 해당 카드를 선택하고 그 도구로 에디터를 연다. */
   onEdit: (id: string, tool: EditorTool) => void;
 }
 
@@ -28,19 +30,9 @@ export const CARD_DRAG_TYPE = "application/x-docufit-card";
 /**
  * 서류 카드 덱. 순서 = 이어붙이기/PDF 페이지 순서.
  * - 마우스: 카드를 끌어 다른 카드 위에 놓으면 그 자리로 이동.
- * - 키보드: 카드의 ◀ ▶ 버튼. 드래그를 못 쓰는 사용자를 위한 동등한 경로.
+ * - 키보드: 카드의 ‹ › 버튼. 드래그를 못 쓰는 사용자를 위한 동등한 경로.
  */
-export function CardDeck({
-  items,
-  selectedId,
-  onSelect,
-  onRemove,
-  onMove,
-  entries,
-  targetMB,
-  onDownload,
-  onEdit,
-}: CardDeckProps) {
+export function CardDeck({ items, selectedId, onSelect, onRemove, onMove, entries, targetMB, onDownload, onEdit }: CardDeckProps) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
@@ -75,11 +67,7 @@ export function CardDeck({
   };
 
   return (
-    <ul
-      className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]"
-      data-testid="card-deck"
-      aria-label="서류 카드 덱"
-    >
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))]" data-testid="card-deck" aria-label="서류 카드 덱">
       {items.map((item, index) => {
         const selected = item.id === selectedId;
         const entry = entries[item.id];
@@ -94,13 +82,13 @@ export function CardDeck({
             onClick={() => onSelect(item.id)}
             aria-current={selected ? "true" : undefined}
             className={[
-              "group relative flex cursor-grab flex-col rounded-xl border bg-panel p-2.5 text-left transition-shadow active:cursor-grabbing",
-              selected ? "border-navy shadow-[0_0_0_2px_var(--color-navy)]" : "border-line hover:shadow-sm",
+              "group relative flex cursor-grab flex-col rounded-xl border bg-panel p-2.5 text-left transition-[box-shadow,border-color] active:cursor-grabbing",
+              selected ? "border-brand ring-2 ring-brand-ring" : "border-line hover:border-line-strong hover:shadow-[var(--shadow-card)]",
               draggingId === item.id ? "opacity-40" : "",
-              dropTargetId === item.id && draggingId !== item.id ? "ring-2 ring-accent ring-offset-2" : "",
+              dropTargetId === item.id && draggingId !== item.id ? "ring-2 ring-brand ring-offset-2" : "",
             ].join(" ")}
           >
-            <span className="absolute left-2 top-2 z-10 rounded-md bg-navy px-1.5 py-0.5 text-[11px] font-bold text-white" aria-label={`${index + 1}번째`}>
+            <span className="absolute left-2 top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-md bg-brand px-1.5 text-[11px] font-bold text-white" aria-label={`${index + 1}번째`}>
               {index + 1}
             </span>
 
@@ -112,44 +100,44 @@ export function CardDeck({
               }}
               aria-label={`${item.name} 제거`}
               // 모바일에는 hover 가 없으므로 항상 보인다. 데스크톱에서는 hover/focus 시에만.
-              className="absolute right-2 top-2 z-10 rounded-md bg-panel/90 px-2 py-0.5 text-muted transition-opacity hover:text-ink focus:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+              className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-panel/90 text-muted shadow-sm transition-opacity hover:text-ink focus:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
             >
-              ✕
+              <IconClose className="h-3.5 w-3.5" />
             </button>
 
             <Thumbnail item={item} />
 
-            <p className="mt-2 truncate text-[13px] font-semibold" title={item.name}>
+            <p className="mt-2 truncate text-[13px] font-semibold text-ink-strong" title={item.name}>
               {item.name}
             </p>
-            <p className="text-xs text-muted">
-              {formatBytes(item.size)}
-              {item.image && ` · ${item.image.width}×${item.image.height}`}
-              {item.image?.convertedFromHeic && <span className="ml-1 rounded bg-pass-soft px-1 text-[10px] font-medium text-pass">HEIC→JPG</span>}
-              {item.edited && <span className="ml-1 rounded bg-accent-soft px-1 text-[10px] font-medium text-accent">편집됨</span>}
+            <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-muted">
+              <span className="tabular-nums">
+                {formatBytes(item.size)}
+                {item.image && ` · ${item.image.width}×${item.image.height}`}
+              </span>
+              {item.image?.convertedFromHeic && <Pill tone="pass">HEIC→JPG</Pill>}
+              {item.edited && <Pill tone="brand">편집됨</Pill>}
             </p>
             {item.status === "error" && (
-              <p className="mt-1 text-xs text-fail" role="alert">
+              <p className="mt-1 text-[11px] text-fail" role="alert">
                 {item.error}
               </p>
             )}
-            {item.image && (
-              <CompressionResultLine image={item.image} entry={entry} targetMB={targetMB} onDownload={() => onDownload(item.image as SourceImage)} />
-            )}
+            {item.image && <CompressionResultLine image={item.image} entry={entry} targetMB={targetMB} onDownload={() => onDownload(item.image as SourceImage)} />}
 
-            <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px]">
-              <Chip disabled={!item.image} onClick={() => onEdit(item.id, "mask")}>
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              <ActionButton variant="secondary" size="xs" disabled={!item.image} onClick={(e) => stopThen(e, () => onEdit(item.id, "mask"))} leadingIcon={<IconEyeOff className="h-3 w-3" />}>
                 가리기
-              </Chip>
-              <Chip disabled={!item.image} onClick={() => onEdit(item.id, "crop")}>
+              </ActionButton>
+              <ActionButton variant="secondary" size="xs" disabled={!item.image} onClick={(e) => stopThen(e, () => onEdit(item.id, "crop"))} leadingIcon={<IconCrop className="h-3 w-3" />}>
                 크롭
-              </Chip>
-              <span className="ml-auto flex gap-0.5">
+              </ActionButton>
+              <span className="ml-auto flex">
                 <MoveButton label="앞으로 이동" disabled={index === 0} onClick={() => onMove(item.id, index - 1)}>
-                  ◀
+                  <IconChevronLeft className="h-3.5 w-3.5" />
                 </MoveButton>
                 <MoveButton label="뒤로 이동" disabled={index === items.length - 1} onClick={() => onMove(item.id, index + 1)}>
-                  ▶
+                  <IconChevronRight className="h-3.5 w-3.5" />
                 </MoveButton>
               </span>
             </div>
@@ -158,6 +146,12 @@ export function CardDeck({
       })}
     </ul>
   );
+}
+
+/** 카드 클릭(선택)으로 전파되지 않게 막고 동작을 실행한다 */
+function stopThen(e: React.MouseEvent, fn: () => void) {
+  e.stopPropagation();
+  fn();
 }
 
 function Thumbnail({ item }: { item: UploadItem }) {
@@ -170,50 +164,28 @@ function Thumbnail({ item }: { item: UploadItem }) {
     );
   }
   return (
-    <div className={`${frame} text-xs text-muted`} aria-live="polite">
+    <div className={`${frame} text-[11px] text-muted`} aria-live="polite">
       {item.status === "processing" ? <span className="animate-pulse">변환 중</span> : <span aria-hidden="true">!</span>}
     </div>
   );
 }
 
-function Chip({ children, disabled, onClick }: { children: React.ReactNode; disabled?: boolean; onClick: () => void }) {
+function Pill({ tone, children }: { tone: "pass" | "brand"; children: ReactNode }) {
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      // 모바일 탭 타깃을 위해 여백을 키우고, 데스크톱에서는 촘촘하게.
-      className="rounded border border-line px-2.5 py-1.5 text-xs text-muted hover:border-navy/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 lg:px-1.5 lg:py-0.5 lg:text-[11px]"
-    >
-      [{children}]
-    </button>
+    <span className={`rounded px-1 py-px text-[10px] font-semibold ${tone === "pass" ? "bg-pass-soft text-pass" : "bg-brand-soft text-brand"}`}>{children}</span>
   );
 }
 
-function MoveButton({
-  label,
-  disabled,
-  onClick,
-  children,
-}: {
-  label: string;
-  disabled: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
+function MoveButton({ label, disabled, onClick, children }: { label: string; disabled: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
       aria-label={label}
+      title={label}
       disabled={disabled}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className="rounded px-2 py-1 text-muted hover:bg-surface hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 lg:px-1 lg:py-0"
+      onClick={(e) => stopThen(e, onClick)}
+      // 모바일 탭 타깃(28px)을 확보하고 데스크톱에서는 촘촘하게
+      className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 lg:h-6 lg:w-6"
     >
       {children}
     </button>

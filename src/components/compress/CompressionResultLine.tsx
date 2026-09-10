@@ -1,6 +1,8 @@
 "use client";
 
 import type { CompressionEntry } from "@/hooks/useCompression";
+import { IconButton } from "@/components/ui/Button";
+import { IconDownload } from "@/components/ui/icons";
 import { MB } from "@/lib/constants";
 import { formatBytes } from "@/lib/format";
 import type { SourceImage } from "@/lib/image/types";
@@ -18,7 +20,7 @@ export function CompressionResultLine({ image, entry, targetMB, onDownload }: Co
 
   if (entry.status === "working") {
     return (
-      <p className="mt-1 animate-pulse text-xs font-medium text-accent" aria-live="polite">
+      <p className="mt-1.5 animate-pulse text-[11px] font-medium text-brand" aria-live="polite">
         최적화 중…
       </p>
     );
@@ -26,7 +28,7 @@ export function CompressionResultLine({ image, entry, targetMB, onDownload }: Co
 
   if (entry.status === "error") {
     return (
-      <p className="mt-1 text-xs text-fail" role="alert">
+      <p className="mt-1.5 text-[11px] text-fail" role="alert">
         {entry.error}
       </p>
     );
@@ -36,23 +38,25 @@ export function CompressionResultLine({ image, entry, targetMB, onDownload }: Co
   if (!result) return null;
 
   const reduction = 1 - result.blob.size / image.originalSize;
-  const reductionLabel = reduction > 0 ? `${Math.round(reduction * 100)}% 감소` : "원본과 비슷";
+  const reductionLabel = reduction > 0.005 ? `−${Math.round(reduction * 100)}%` : "≈ 원본";
 
   return (
-    <div className="mt-1 space-y-0.5 text-xs">
-      <p className={result.fitsTarget ? "text-pass" : "text-fail"}>
-        → <strong>{formatBytes(result.blob.size)}</strong> ({reductionLabel})
-        <button
-          type="button"
+    <div className="mt-1.5 space-y-1 text-[11px]">
+      <div className={`flex items-center justify-between gap-2 ${result.fitsTarget ? "text-pass" : "text-fail"}`}>
+        <p className="min-w-0 truncate tabular-nums">
+          → <strong>{formatBytes(result.blob.size)}</strong> <span className="opacity-80">({reductionLabel})</span>
+        </p>
+        <IconButton
+          label="이 파일 다운로드"
+          size="sm"
           onClick={(e) => {
             e.stopPropagation();
             onDownload();
           }}
-          className="ml-2 rounded border border-line bg-panel px-2 py-0.5 font-medium text-ink hover:bg-surface"
         >
-          다운로드
-        </button>
-      </p>
+          <IconDownload className="h-3.5 w-3.5" />
+        </IconButton>
+      </div>
       {!result.fitsTarget && (
         <p className="text-warn" role="alert">
           최소 해상도까지 줄여도 {formatBytes(targetMB * MB, 1)} 를 넘습니다. 목표를 늘리거나 JPG 를 선택해 보세요.

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteFooter } from "@/components/layout/SiteFooter";
+import { IconChevronLeft } from "@/components/ui/icons";
 import { FILE_TTL_MS } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -20,15 +22,17 @@ export default function PrivacyPage() {
   const ttlMinutes = Math.round(FILE_TTL_MS / 60_000);
 
   return (
-    <div className="mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:px-8">
-      <Link href="/" prefetch={false} className="text-sm text-muted underline hover:text-ink">
-        ← 스튜디오로 돌아가기
-      </Link>
+    <>
+      <div className="mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:px-8">
+        <Link href="/" prefetch={false} className="inline-flex items-center gap-1 text-[13px] font-medium text-muted hover:text-brand">
+          <IconChevronLeft className="h-4 w-4" />
+          스튜디오로 돌아가기
+        </Link>
 
-      <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-navy">개인정보 처리 안내</h1>
-      <p className="mt-2 text-sm text-muted">마지막 검토: {LAST_REVIEWED}</p>
+        <h1 className="mt-4 text-2xl font-bold tracking-tight text-ink-strong sm:text-3xl">개인정보 처리 안내</h1>
+        <p className="mt-2 text-[13px] text-muted">마지막 검토: {LAST_REVIEWED}</p>
 
-      <section className="mt-8 space-y-6 text-[15px] leading-relaxed">
+      <section className="mt-8 space-y-5 text-[15px] leading-relaxed">
         <Block title="한 줄 요약">
           DocuFit 은 회원가입이 없고, 올리신 서류 이미지를 <strong>서버로 전송하거나 저장하지 않습니다.</strong> 변환·압축·가리기·이어붙이기·PDF
           만들기는 모두 사용자의 브라우저 안에서 실행되고, 탭을 닫으면 남는 것이 없습니다.
@@ -90,15 +94,17 @@ export default function PrivacyPage() {
           </p>
         </Block>
       </section>
-    </div>
+      </div>
+      <SiteFooter />
+    </>
   );
 }
 
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-card border border-line bg-panel p-5">
-      <h2 className="text-lg font-bold">{title}</h2>
-      <div className="mt-2">{children}</div>
+      <h2 className="text-[15px] font-semibold text-ink-strong">{title}</h2>
+      <div className="mt-2 text-sm text-ink">{children}</div>
     </div>
   );
 }

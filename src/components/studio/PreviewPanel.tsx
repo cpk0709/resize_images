@@ -1,10 +1,12 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ImageEditor, type EditorTool } from "@/components/editor/ImageEditor";
 import { MergePreview } from "@/components/merge/MergePreview";
-import { MergeSummary } from "@/components/merge/MergeSummary";
 import { ActionBar, type PrimaryAction } from "@/components/studio/ActionBar";
-import { ActionButton, ToggleButton } from "@/components/ui/Button";
+import { ResultStats } from "@/components/studio/ResultStats";
+import { ActionButton } from "@/components/ui/Button";
+import { IconCheckCircle, IconCrop, IconDocument, IconEyeOff, IconImage, IconRotateRight } from "@/components/ui/icons";
 import type { CompressionEntry } from "@/hooks/useCompression";
 import type { MergeEntry } from "@/hooks/useMergeExport";
 import type { UploadItem } from "@/hooks/useSourceImages";
@@ -13,19 +15,16 @@ import { formatBytes } from "@/lib/format";
 import type { EditResult } from "@/lib/image/edit";
 import type { SourceImage } from "@/lib/image/types";
 
-/** 병합 출력이 활성일 때 미리보기·요약 카드에 필요한 것들 */
+/** 병합 출력이 활성일 때 미리보기·결과 카드에 필요한 것들 */
 export interface MergePanelProps {
   layout: OutputLayout;
-  format: OutputFormat;
   /** 카드 덱 순서 그대로의 준비된 이미지들 */
   images: SourceImage[];
   /** 편집이 적용된 장들 */
   editedIds: ReadonlySet<string>;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  targetMB: number;
   entry: MergeEntry | null;
-  onDownload: () => void;
 }
 
 interface PreviewPanelProps {
@@ -33,19 +32,16 @@ interface PreviewPanelProps {
   className?: string;
   item: UploadItem | undefined;
   entry: CompressionEntry | undefined;
-  /** 전체 장수. 병합 안내 문구용 */
-  total: number;
+  format: OutputFormat;
+  targetMB: number;
   /** 편집 중이면 시작 도구, 아니면 null */
   editingTool: EditorTool | null;
   onStartEdit: (tool: EditorTool) => void;
   onApplyEdit: (result: EditResult) => void;
   onCancelEdit: () => void;
   onRestoreOriginal: () => void;
-  /** 병합 출력(이어붙이기/PDF)이 활성이면 미리보기와 요약 카드를 보여준다. null 이면 파일별 출력 모드. */
+  /** 병합 출력(이어붙이기/PDF)이 활성이면 미리보기와 결과 카드를 병합 기준으로 보여준다. null 이면 파일별 출력 모드. */
   merge: MergePanelProps | null;
-  /** 헤더의 병합 방향 토글. 컨트롤 패널 "출력 방식" 과 같은 상태를 공유한다. */
-  layout: OutputLayout;
-  onLayoutChange: (layout: OutputLayout) => void;
   /** 패널 하단 액션 바 (주요 동작). 편집 중에는 숨긴다. */
   action: PrimaryAction;
   actionSummary: string;
@@ -53,96 +49,68 @@ interface PreviewPanelProps {
 }
 
 /**
- * 오른쪽 "시각적 병합 및 가리기" 영역.
- * - 보기 모드: 선택한 서류의 큰 미리보기 + 정보 + 편집 시작 버튼.
- * - 병합 모드: 같은 자리에 배치 미리보기(결과가 있으면 결과)가 들어온다.
- * - 편집 모드: 같은 자리에 ImageEditor 가 들어온다.
+ * 오른쪽 "미리보기 · 최적화 결과" 패널.
+ * - 보기 모드: 선택한 서류의 큰 미리보기 + 파일 정보 + 결과 카드 + 최종 버튼.
+ * - 병합 모드: 미리보기 자리에 배치 미리보기(결과가 있으면 결과)가 들어오고 결과 카드는 병합 기준.
+ * - 편집 모드: 같은 자리에 ImageEditor 가 들어온다 (결과 카드·버튼은 숨김).
  */
 export function PreviewPanel({
   className = "",
   item,
   entry,
-  total,
+  format,
+  targetMB,
   editingTool,
   onStartEdit,
   onApplyEdit,
   onCancelEdit,
   onRestoreOriginal,
   merge,
-  layout,
-  onLayoutChange,
   action,
   actionSummary,
   progress,
 }: PreviewPanelProps) {
   const image = item?.image;
   const editing = editingTool !== null && image;
-  const canStitch = total >= 2;
-
-  /** 같은 방향을 다시 누르면 개별 파일로 되돌린다 */
-  const toggleLayout = (next: OutputLayout) => onLayoutChange(layout === next ? "separate" : next);
 
   return (
     <section className={`flex min-w-0 flex-col rounded-card border border-line bg-panel p-4 sm:p-5 ${className}`} aria-label="시각적 병합 및 가리기">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold">{editing ? "편집" : merge ? "시각적 병합" : "시각적 병합 및 가리기"}</h2>
-        {!editing && (
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            {total > 0 && (
-              <>
-                <ToggleButton
-                  active={layout === "vertical"}
-                  disabled={!canStitch}
-                  title={canStitch ? "카드 덱 순서대로 위에서 아래로 이어붙입니다" : "2장 이상일 때 선택할 수 있습니다"}
-                  onClick={() => toggleLayout("vertical")}
-                >
-                  ⇅ 세로 병합
-                </ToggleButton>
-                <ToggleButton
-                  active={layout === "horizontal"}
-                  disabled={!canStitch}
-                  title={canStitch ? "카드 덱 순서대로 왼쪽에서 오른쪽으로 이어붙입니다" : "2장 이상일 때 선택할 수 있습니다"}
-                  onClick={() => toggleLayout("horizontal")}
-                >
-                  ⇆ 가로 병합
-                </ToggleButton>
-                <span className="mx-1 h-5 w-px bg-line" aria-hidden="true" />
-              </>
-            )}
-            {image && (
-              <>
-                <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("mask")}>
-                  ■ 가리기
-                </ActionButton>
-                <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("crop")}>
-                  ⌗ 크롭
-                </ActionButton>
-                <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("select")}>
-                  ↻ 회전·편집
-                </ActionButton>
-                {item?.edited && (
-                  <button type="button" onClick={onRestoreOriginal} className="text-xs text-muted underline hover:text-ink">
-                    원본으로 되돌리기
-                  </button>
-                )}
-              </>
+        <h2 className="text-[15px] font-semibold text-ink-strong">{editing ? "편집" : merge ? "병합 미리보기" : "미리보기"}</h2>
+        {!editing && image && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("mask")} leadingIcon={<IconEyeOff className="h-3.5 w-3.5" />}>
+              가리기
+            </ActionButton>
+            <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("crop")} leadingIcon={<IconCrop className="h-3.5 w-3.5" />}>
+              크롭
+            </ActionButton>
+            <ActionButton variant="secondary" size="sm" onClick={() => onStartEdit("select")} leadingIcon={<IconRotateRight className="h-3.5 w-3.5" />}>
+              회전·편집
+            </ActionButton>
+            {item?.edited && (
+              <ActionButton variant="ghost" size="sm" onClick={onRestoreOriginal}>
+                원본으로 되돌리기
+              </ActionButton>
             )}
           </div>
         )}
       </div>
 
-      {/* 높이를 뷰포트 기준으로 고정한다. 세로로 긴 사진이 패널을 화면 밖까지 늘리지 않게. */}
-      {/* 모바일은 화면이 좁고 세로 스크롤이 길어 절반 높이로, 데스크톱은 넉넉하게. */}
-      {/* 편집 중에는 모바일도 넉넉하게: 도구 줄이 3~4줄로 접혀 캔버스 몫이 줄어들고, 세밀한 영역을 그려야 해서 캔버스가 커야 한다. */}
-      <div className={["mt-4 lg:h-[clamp(320px,62vh,1000px)]", editing ? "h-[clamp(480px,72vh,1000px)]" : "h-[clamp(280px,50vh,1000px)]"].join(" ")}>
+      {/*
+        높이: 모바일·lg 는 뷰포트 비율로 고정한다 (세로로 긴 사진이 패널을 화면 밖까지 늘리지 않게). xl 앱 셸에서는 결과 카드·버튼을
+        뺀 나머지를 전부 차지한다 (flex-1). 편집 중에는 모바일도 넉넉하게: 도구 줄이 3~4줄로 접혀 캔버스 몫이 줄어들고, 세밀한 영역을
+        그려야 해서 캔버스가 커야 한다.
+      */}
+      <div className={["mt-3 xl:h-auto xl:min-h-0 xl:flex-1", editing ? "h-[clamp(480px,72vh,1000px)] lg:h-[clamp(420px,62vh,1000px)]" : "h-[clamp(280px,50vh,900px)] lg:h-[clamp(300px,45vh,900px)]"].join(" ")}>
         {editing ? (
           <ImageEditor key={image.id + image.previewUrl} image={image} initialTool={editingTool} onApply={onApplyEdit} onCancel={onCancelEdit} />
         ) : merge ? (
-          <div className="h-full overflow-hidden rounded-xl border border-line bg-surface p-3">
+          <div className="h-full overflow-hidden rounded-xl bg-surface p-3">
             <MergePreview
               images={merge.images}
               layout={merge.layout}
-              format={merge.format}
+              format={format}
               editedIds={merge.editedIds}
               selectedId={merge.selectedId}
               onSelect={merge.onSelect}
@@ -151,7 +119,7 @@ export function PreviewPanel({
             />
           </div>
         ) : (
-          <div className="flex h-full items-center justify-center overflow-hidden rounded-xl border border-line bg-surface p-3">
+          <div className="flex h-full items-center justify-center overflow-hidden rounded-xl bg-surface p-4">
             {image ? (
               // blob: URL 은 next/image 최적화 대상이 아니므로 기본 <img> 를 쓴다.
               // eslint-disable-next-line @next/next/no-img-element
@@ -160,63 +128,34 @@ export function PreviewPanel({
                 alt={`${item.name} 미리보기`}
                 // 컨테이너(100%)와 원본 크기 중 작은 쪽까지만. 원본보다 키워 흐릿해지는 것을 막는다.
                 style={{ maxWidth: `min(100%, ${image.width}px)`, maxHeight: `min(100%, ${image.height}px)` }}
-                className="h-auto w-auto rounded-md object-contain shadow-md"
+                className="h-auto w-auto rounded-md bg-white object-contain shadow-[var(--shadow-float)]"
               />
             ) : (
-              <p className="text-sm text-muted">
+              <div className="flex flex-col items-center gap-2 text-center text-[13px] text-muted">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-panel text-subtle shadow-[var(--shadow-card)]">
+                  <IconImage className="h-6 w-6" />
+                </span>
                 {item ? "이미지를 준비하는 중입니다." : "서류 카드를 선택하면 여기에 크게 표시됩니다."}
-              </p>
+              </div>
             )}
           </div>
         )}
       </div>
 
-      {image && !editing && !merge && (
-        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
-          <Info label="파일" value={item.name} />
-          <Info
-            label={item.edited ? "편집본" : "원본"}
-            value={`${formatBytes(item.edited ? image.blob.size : item.size)} · ${image.width}×${image.height}`}
-          />
-          <Info
-            label="최적화 결과"
-            value={
-              entry?.status === "done" && entry.result
-                ? `${formatBytes(entry.result.blob.size)} · ${entry.result.width}×${entry.result.height}` +
-                  (entry.result.quality !== null ? ` · 품질 ${Math.round(entry.result.quality * 100)}` : "")
-                : entry?.status === "working"
-                  ? "처리 중…"
-                  : "아직 없음"
-            }
-          />
-          <Info label="순서" value={`${total}장 중`} />
-        </dl>
-      )}
+      {!editing && item && image && <FileRow item={item} image={image} entry={merge ? undefined : entry} />}
 
       {!editing && (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="mt-5">
+          <h3 className="mb-2.5 text-[15px] font-semibold text-ink-strong">최적화 결과</h3>
           {merge ? (
-            <MergeSummary layout={merge.layout} format={merge.format} imageCount={merge.images.length} targetMB={merge.targetMB} entry={merge.entry} onDownload={merge.onDownload} />
+            <ResultStats mode="merge" images={merge.images} layout={merge.layout} format={format} targetMB={targetMB} entry={merge.entry} />
+          ) : item ? (
+            <ResultStats mode="single" item={item} entry={entry} format={format} targetMB={targetMB} />
           ) : (
-            <div className="rounded-xl border border-dashed border-line p-4 text-sm">
-              <p className="font-semibold">이어붙이기 · PDF</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted">
-                {canStitch
-                  ? "위의 “세로 병합 / 가로 병합” 을 누르면 카드 덱 순서대로 한 장으로 이어붙인 미리보기가 여기에 표시됩니다. PDF 로 묶으려면 컨트롤 패널에서 저장 형식을 PDF 로 바꾸세요."
-                  : "서류를 2장 이상 올리면 이어붙이기를 선택할 수 있습니다. PDF 로 묶으려면 컨트롤 패널에서 저장 형식을 PDF 로 바꾸세요."}
-              </p>
+            <div className="rounded-xl border border-dashed border-line-strong/70 px-4 py-6 text-center text-[13px] text-muted">
+              서류를 추가하면 현재 크기, 최적화 후 크기, 절감률이 여기에 표시됩니다.
             </div>
           )}
-          <div className="rounded-xl border border-line p-4 text-sm">
-            <p className="flex items-center justify-between gap-2 font-semibold">
-              민감정보 가리기 · 크롭 · 회전
-              <span className="shrink-0 whitespace-nowrap rounded bg-pass-soft px-1.5 py-0.5 text-[11px] font-medium text-pass">사용 가능</span>
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">
-              위 버튼으로 시작합니다. 편집은 이 브라우저 안에서만 이루어지고, 적용하면 카드 덱의 이미지가 교체됩니다.
-              &ldquo;원본으로 되돌리기&rdquo; 로 언제든 취소할 수 있습니다.
-            </p>
-          </div>
         </div>
       )}
 
@@ -225,13 +164,41 @@ export function PreviewPanel({
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+/** 미리보기 아래 파일 한 줄: 아이콘 · 이름 · 크기/해상도 · 상태 배지 */
+function FileRow({ item, image, entry }: { item: UploadItem; image: SourceImage; entry: CompressionEntry | undefined }) {
+  const status: { label: string; tone: "pass" | "brand" } =
+    entry?.status === "done"
+      ? { label: "최적화 완료", tone: "pass" }
+      : item.edited
+        ? { label: "편집 적용됨", tone: "brand" }
+        : image.convertedFromHeic
+          ? { label: "HEIC → JPG 변환됨", tone: "pass" }
+          : { label: "준비 완료", tone: "pass" };
+
   return (
-    <div className="min-w-0">
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className="truncate font-medium" title={value}>
-        {value}
-      </dd>
+    <div className="mt-3 flex items-center gap-3 border-t border-line pt-3" data-testid="file-row">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand" aria-hidden="true">
+        <IconDocument className="h-4.5 w-4.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-semibold text-ink-strong" title={item.name}>
+          {item.name}
+        </p>
+        <p className="text-[11px] tabular-nums text-muted">
+          {formatBytes(item.edited ? image.blob.size : item.size)} · {image.width} × {image.height}
+          {item.edited && <span className="ml-1 text-subtle">(편집본 · 원본 {formatBytes(item.size)})</span>}
+        </p>
+      </div>
+      <StatusPill tone={status.tone}>{status.label}</StatusPill>
     </div>
+  );
+}
+
+function StatusPill({ tone, children }: { tone: "pass" | "brand"; children: ReactNode }) {
+  return (
+    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone === "pass" ? "bg-pass-soft text-pass" : "bg-brand-soft text-brand"}`}>
+      <IconCheckCircle className="h-3.5 w-3.5" />
+      {children}
+    </span>
   );
 }

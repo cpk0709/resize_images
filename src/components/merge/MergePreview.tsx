@@ -31,7 +31,7 @@ interface MergePreviewProps {
  */
 export function MergePreview({ images, layout, format, editedIds, selectedId, onSelect, result, resultUrls }: MergePreviewProps) {
   if (images.length === 0) {
-    return <p className="text-sm text-muted">서류를 추가하면 배치 미리보기가 표시됩니다.</p>;
+    return <p className="text-[13px] text-muted">서류를 추가하면 배치 미리보기가 표시됩니다.</p>;
   }
 
   if (result && resultUrls.length > 0) {
@@ -71,7 +71,7 @@ export function MergePreview({ images, layout, format, editedIds, selectedId, on
         onClick={() => onSelect(img.id)}
         aria-pressed={selected}
         title={`${img.originalName} 선택`}
-        className={["relative block shrink-0 text-left outline-none", selected ? "ring-2 ring-navy ring-offset-2 ring-offset-surface" : "hover:ring-2 hover:ring-navy/30 hover:ring-offset-2 hover:ring-offset-surface", className].join(" ")}
+        className={["relative block shrink-0 text-left outline-none", selected ? "ring-2 ring-brand ring-offset-2 ring-offset-surface" : "hover:ring-2 hover:ring-brand-ring hover:ring-offset-2 hover:ring-offset-surface", className].join(" ")}
         style={style}
         data-testid="merge-tile"
         data-image-id={img.id}
@@ -123,7 +123,7 @@ export function MergePreview({ images, layout, format, editedIds, selectedId, on
 }
 
 function Caption({ children }: { children: React.ReactNode }) {
-  return <p className="mb-2 shrink-0 text-xs font-medium text-muted">{children}</p>;
+  return <p className="mb-2 shrink-0 text-[11px] font-medium text-muted">{children}</p>;
 }
 
 function Badge({ children, tone = "order" }: { children: React.ReactNode; tone?: "order" | "edited" }) {
@@ -131,7 +131,7 @@ function Badge({ children, tone = "order" }: { children: React.ReactNode; tone?:
     <span
       className={[
         "absolute top-1.5 z-10 rounded-md px-1.5 py-0.5 text-[11px] font-bold shadow-sm",
-        tone === "order" ? "left-1.5 bg-navy/90 text-white" : "right-1.5 bg-accent-soft text-navy ring-1 ring-navy/30",
+        tone === "order" ? "left-1.5 bg-ink-strong/85 text-white" : "right-1.5 bg-brand-soft text-brand ring-1 ring-brand-ring",
       ].join(" ")}
     >
       {children}

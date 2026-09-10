@@ -5,13 +5,17 @@ import type { EditorTool } from "@/components/editor/ImageEditor";
 import type { PrimaryAction } from "@/components/studio/ActionBar";
 import { CardDeck } from "@/components/studio/CardDeck";
 import { ControlPanel } from "@/components/studio/ControlPanel";
+import { FeatureTiles } from "@/components/studio/FeatureTiles";
 import { PreviewPanel } from "@/components/studio/PreviewPanel";
 import type { SizeSample } from "@/components/studio/SizeMeter";
+import { StatusBar } from "@/components/studio/StatusBar";
+import { ActionButton } from "@/components/ui/Button";
+import { IconAlert, IconClose, IconTrash } from "@/components/ui/icons";
 import { Dropzone } from "@/components/uploader/Dropzone";
 import { useCompression } from "@/hooks/useCompression";
 import { useMergeExport } from "@/hooks/useMergeExport";
 import { useSourceImages } from "@/hooks/useSourceImages";
-import { MB, type OutputFormat, type OutputLayout } from "@/lib/constants";
+import { MB, MAX_INPUT_FILES, type OutputFormat, type OutputLayout } from "@/lib/constants";
 import { formatBytes } from "@/lib/format";
 import type { EditResult } from "@/lib/image/edit";
 import { DEFAULT_PRESET_ID, findPreset, presetDefaultMB, SUBMISSION_PRESETS, type SubmissionPreset } from "@/lib/presets";
@@ -19,8 +23,11 @@ import { DEFAULT_PRESET_ID, findPreset, presetDefaultMB, SUBMISSION_PRESETS, typ
 const FORMAT_LABEL: Record<OutputFormat, string> = { jpeg: "JPG", png: "PNG", pdf: "PDF" };
 const LAYOUT_LABEL: Record<OutputLayout, string> = { separate: "개별 파일", vertical: "세로 이어붙이기", horizontal: "가로 이어붙이기" };
 
+const DEFAULT_FORMAT: OutputFormat = "jpeg";
+const DEFAULT_LAYOUT: OutputLayout = "separate";
+
 /**
- * 스튜디오 조립 컴포넌트. 세 패널(컨트롤 / 편집 캔버스 / 미리보기)을 page 의 grid 안에 형제로 렌더한다.
+ * 스튜디오 조립 컴포넌트. 네 형제(컨트롤 / 편집 캔버스 / 미리보기 / 상태 바)를 page 의 grid 안에 렌더한다.
  *
  * 출력 경로는 둘이다.
  * - 파일별 압축(useCompression): 저장 형식 JPG/PNG + 출력 방식 "개별 파일".
@@ -30,8 +37,8 @@ const LAYOUT_LABEL: Record<OutputLayout, string> = { separate: "개별 파일", 
 export function Studio() {
   const source = useSourceImages();
 
-  const [format, setFormat] = useState<OutputFormat>("jpeg");
-  const [layout, setLayout] = useState<OutputLayout>("separate");
+  const [format, setFormat] = useState<OutputFormat>(DEFAULT_FORMAT);
+  const [layout, setLayout] = useState<OutputLayout>(DEFAULT_LAYOUT);
 
   const compression = useCompression(source.readyImages);
   const merge = useMergeExport(source.readyImages, { layout, format, targetMB: compression.targetMB });
@@ -62,6 +69,17 @@ export function Studio() {
     if (next !== "pdf") compression.changeFormat(next); // 파일별 압축 경로의 포맷. PDF 는 병합 경로가 담당.
   };
 
+  /** 프리셋·목표 용량·형식·출력 방식을 처음 상태로. 서류 목록은 그대로 둔다 (그건 "모두 지우기"). */
+  const defaultPreset = findPreset(DEFAULT_PRESET_ID) ?? SUBMISSION_PRESETS[0];
+  const isSettingsDirty =
+    presetId !== DEFAULT_PRESET_ID || compression.targetMB !== presetDefaultMB(preset) || format !== DEFAULT_FORMAT || layout !== DEFAULT_LAYOUT;
+  const resetAllSettings = () => {
+    setPresetId(DEFAULT_PRESET_ID);
+    compression.changeTarget(presetDefaultMB(defaultPreset));
+    handleFormatChange(DEFAULT_FORMAT);
+    setLayout(DEFAULT_LAYOUT);
+  };
+
   const handleRemove = (id: string) => {
     compression.forget(id);
     source.remove(id);
@@ -89,7 +107,7 @@ export function Studio() {
     compression.forget(selectedItem.id);
   };
 
-  // ── 파생 상태: 신호등 샘플, 주요 버튼 ──
+  // ── 파생 상태: 신호등 샘플, 절감량, 주요 버튼 ──
   const limitBytes = Math.round(compression.targetMB * MB);
   const total = source.readyImages.length;
 
@@ -107,6 +125,21 @@ export function Studio() {
           ? { id: img.id, name: img.originalName, bytes: result.blob.size, kind: "result" }
           : { id: img.id, name: img.originalName, bytes: img.originalSize, kind: "original" };
       });
+
+  /** 결과가 있는 장들의 "지금 크기 → 결과 크기" 합. 상태 바의 절감량. */
+  const savings = (() => {
+    if (merge.isActive) {
+      const result = merge.entry?.result;
+      if (!result) return null;
+      return { beforeBytes: source.readyImages.reduce((sum, img) => sum + img.blob.size, 0), afterBytes: result.blob.size };
+    }
+    const done = source.readyImages.filter((img) => compression.entries[img.id]?.result);
+    if (done.length === 0) return null;
+    return {
+      beforeBytes: done.reduce((sum, img) => sum + img.blob.size, 0),
+      afterBytes: done.reduce((sum, img) => sum + (compression.entries[img.id]?.result?.blob.size ?? 0), 0),
+    };
+  })();
 
   const isRunning = merge.isActive ? merge.isRunning : compression.isRunning;
 
@@ -127,7 +160,7 @@ export function Studio() {
     return { kind: "run", label: "최적화 시작", onClick: compression.run };
   })();
 
-  /** 액션 바 왼쪽의 한 줄 요약: 무엇을 어떤 기준으로 만드는지 */
+  /** 액션 바의 한 줄 요약: 무엇을 어떤 기준으로 만드는지 */
   const actionSummary =
     total === 0
       ? "서류를 추가하면 여기서 최적화하고 내려받습니다."
@@ -146,6 +179,8 @@ export function Studio() {
         targetMB={compression.targetMB}
         onTargetChange={compression.changeTarget}
         onResetTarget={resetTarget}
+        onResetAll={resetAllSettings}
+        isDirty={isSettingsDirty}
         format={format}
         onFormatChange={handleFormatChange}
         layout={effectiveLayout}
@@ -156,40 +191,50 @@ export function Studio() {
         isRunning={isRunning}
       />
 
-      <section className="order-1 flex min-w-0 flex-col gap-4 rounded-card border border-line bg-panel p-4 sm:p-5 lg:order-2" aria-label="편집 캔버스">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">편집 캔버스</h2>
+      <section className="order-1 flex min-w-0 flex-col gap-4 rounded-card border border-line bg-panel p-4 sm:p-5 lg:order-2 scroll-thin xl:min-h-0 xl:overflow-y-auto" aria-label="편집 캔버스">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-[15px] font-semibold text-ink-strong">서류 업로드 및 편집</h2>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted">
+              <span className="lg:hidden">사진을 추가하면 이 기기 안에서만 변환·압축합니다.</span>
+              <span className="hidden lg:inline">
+                파일을 드래그 앤 드롭하거나, 클릭하여 서류 사진을 추가하세요. JPG · PNG · HEIC(아이폰) · WEBP · GIF · BMP · TIFF 를 지원하며 한 번에 최대{" "}
+                {MAX_INPUT_FILES}장까지 올릴 수 있습니다.
+              </span>
+            </p>
+          </div>
           {source.items.length > 0 && (
-            <button type="button" onClick={handleClear} className="text-sm text-muted underline hover:text-ink">
+            <ActionButton variant="ghost" size="sm" className="shrink-0" onClick={handleClear} disabled={isRunning} leadingIcon={<IconTrash className="h-3.5 w-3.5" />}>
               모두 지우기
-            </button>
+            </ActionButton>
           )}
         </div>
 
         <Dropzone onFiles={source.addFiles} compact={source.items.length > 0} />
 
         {source.rejected.length > 0 && (
-          <div role="alert" className="flex items-start justify-between gap-3 rounded-lg border border-warn/40 bg-warn-soft p-3 text-sm text-warn">
-            <ul className="space-y-0.5">
+          <div role="alert" className="flex items-start gap-2.5 rounded-lg border border-warn/30 bg-warn-soft p-3 text-[13px] text-warn">
+            <IconAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <ul className="min-w-0 flex-1 space-y-0.5">
               {source.rejected.map((r) => (
-                <li key={`${r.name}-${r.reason}`}>
-                  <span className="font-medium">{r.name}</span>: {r.reason}
+                <li key={`${r.name}-${r.reason}`} className="truncate">
+                  <span className="font-semibold">{r.name}</span>: {r.reason}
                 </li>
               ))}
             </ul>
-            <button type="button" onClick={source.dismissRejected} aria-label="알림 닫기" className="shrink-0">
-              ✕
+            <button type="button" onClick={source.dismissRejected} aria-label="알림 닫기" className="shrink-0 rounded p-0.5 hover:bg-warn/10">
+              <IconClose className="h-4 w-4" />
             </button>
           </div>
         )}
 
         {source.items.length > 0 && (
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold">서류 카드 덱</h3>
-            <span className="text-sm text-muted">
+            <h3 className="text-[13px] font-semibold text-ink-strong">추가한 서류</h3>
+            <span className="text-[11px] text-muted">
               {total}장 준비됨
               {source.processingCount > 0 && ` · ${source.processingCount}장 변환 중`}
-              {" · 끌어서 순서 변경"}
+              <span className="hidden sm:inline"> · 끌어서 순서 변경</span>
             </span>
           </div>
         )}
@@ -206,13 +251,18 @@ export function Studio() {
           onDownload={compression.download}
           onEdit={startEdit}
         />
+
+        <div className="mt-auto hidden pt-2 md:block">
+          <FeatureTiles />
+        </div>
       </section>
 
       <PreviewPanel
-        className="order-3"
+        className="order-3 lg:col-span-2 xl:col-span-1 scroll-thin xl:min-h-0 xl:overflow-y-auto"
         item={selectedItem}
         entry={merge.isActive ? undefined : selectedItem ? compression.entries[selectedItem.id] : undefined}
-        total={source.items.length}
+        format={format}
+        targetMB={compression.targetMB}
         editingTool={editingTool}
         onStartEdit={(tool) => selectedItem && startEdit(selectedItem.id, tool)}
         onApplyEdit={applyEdit}
@@ -222,23 +272,32 @@ export function Studio() {
           merge.isActive
             ? {
                 layout: effectiveLayout,
-                format,
                 images: source.readyImages,
                 editedIds: new Set(source.items.filter((it) => it.edited).map((it) => it.id)),
                 selectedId: selectedItem?.id ?? null,
                 onSelect: setSelectedId,
-                targetMB: compression.targetMB,
                 entry: merge.entry,
-                onDownload: merge.download,
               }
             : null
         }
-        layout={effectiveLayout}
-        onLayoutChange={setLayout}
         action={primaryAction}
         actionSummary={actionSummary}
         progress={merge.isActive ? undefined : { done: compression.doneCount, total: compression.total }}
       />
+
+      <div className="order-4 lg:col-span-full">
+        <StatusBar
+          items={source.items}
+          readyCount={total}
+          processingCount={source.processingCount}
+          selected={selectedItem}
+          onRemoveSelected={() => selectedItem && handleRemove(selectedItem.id)}
+          limitBytes={limitBytes}
+          samples={samples}
+          savings={savings}
+          isRunning={isRunning}
+        />
+      </div>
     </>
   );
 }
