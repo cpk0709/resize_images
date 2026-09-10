@@ -21,7 +21,8 @@
 
 Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한다. 각 소단계가 끝나면 로컬에서 직접 눌러볼 수 있어야 한다.
 
-1. **HEIC 실파일 검증** 아이폰 사진(HEIC)을 실제로 올려 변환·썸네일·"HEIC → JPG 변환됨" 배지를 확인. 실패 시 `src/lib/image/heic.ts` 부터 본다.
+1. **파비콘 · SEO 최적화** (사용자 지시, 2026-09-10) — 대상: 관공서·은행 사이트에 서류 사진을 올리다 용량·확장자 제한에 막힌 사람. 할 일: 파비콘/아이콘 세트(`app/icon`, `apple-icon`, manifest), 한국어 검색 의도에 맞는 title·description·키워드(예: "정부24 첨부파일 용량 초과", "HEIC JPG 변환", "전입신고 서류 사진 10MB", "이미지 용량 줄이기 무료"), Open Graph·Twitter 카드 이미지, `robots.txt`·`sitemap.xml`(`app/robots.ts`, `app/sitemap.ts`), JSON-LD(WebApplication/FAQ), 랜딩 본문에 검색 의도를 담은 설명·FAQ 섹션(프라이버시 강조), `metadataBase`·canonical, `lang="ko"`. 배포 도메인이 정해져야 `metadataBase` 를 확정할 수 있다.
+2. **HEIC 실파일 검증** 아이폰 사진(HEIC)을 실제로 올려 변환·썸네일·"HEIC → JPG 변환됨" 배지를 확인. 실패 시 `src/lib/image/heic.ts` 부터 본다.
 2. **Phase 4 배포 실행** 사용자가 Vercel 에 배포(`vercel link && vercel --prod`) → 실서비스 URL 에서 `curl -sI <url> | grep -i cache-control` 로 `no-store` 확인 → 아이폰 HEIC 실기기 테스트 → `src/app/privacy/page.tsx` 3절에 호스팅 업체·접속 로그 보관 기간 기입. (헤더·개인정보 안내·크론 스케줄·README·모바일 레이아웃은 세션 11 에서 완료)
 3. **품질 후속(선택)** 병합 진행률 표시(현재는 스피너 문구만), 에디터 창 크기 변경 시 캔버스 재배치, 모자이크 블록 크기 조절, A4 비율 크롭 프리셋, PDF 페이지 여백 옵션.
 4. **Phase 3 서버 폴백 (선택)** 캔버스 한계 초과 시 동의 후 가리기 끝난 결과만 sharp 로 압축, S3 + 10분 presigned + 60분 파기. 미결 결정 1 에 따라 Phase 2 출시 후로 미룰 수 있음.
