@@ -83,6 +83,10 @@ claude                           # SessionStart 훅이 HISTORY 를 읽어 준다
 .claude/settings.json     SessionStart 훅 (팀 공유, 커밋됨)
 .claude/skills/wrap-up/   세션 마무리 스킬
 scripts/session-context.mjs  HISTORY.md + git + 환경 체크를 컨텍스트로 출력
+scripts/package-standalone.mjs  next build(standalone) 결과에 static·public 을 넣고 .env* 를 제거 (EC2 배포 아카이브)
+deploy/ec2/               EC2 초기 설정(setup.sh), 릴리스 교체(release.sh), systemd 서비스·cleanup 타이머
+deploy/nginx/docufit.conf nginx 리버스 프록시 (setup.sh 가 도메인을 채워 설치, certbot 이 HTTPS 추가)
+.github/workflows/deploy-ec2.yml  main push → standalone 빌드 → scp → release.sh (변수 EC2_DEPLOY_ENABLED=true 일 때만)
 docs/HISTORY.md           작업 히스토리 (세션 간 단일 진실 공급원)
 docs/PRD.md, docs/architecture.md
 src/app/                  라우트. api/cron/cleanup = TTL 파기 크론
@@ -105,6 +109,7 @@ prisma/schema.prisma      FileAsset, CleanupRun
 - **fabric v7 함정:** 객체 기준점 `originX/originY` 기본값이 `center` 다 (v6 까지는 left/top). `left/top` 을 좌상단 좌표로 쓰려면 객체 생성 시 `originX: "left", originY: "top"` 을 명시한다. 배경 이미지가 1/4 만 보이거나 사각형이 어긋나면 이 문제다 (HISTORY 세션 7). 픽셀 좌표 환산은 origin 과 무관한 `getBoundingRect()` 를 쓴다.
 - 스키마를 바꾸면 `npx prisma generate` 후 `npx prisma migrate dev --name <설명>`. 마이그레이션 파일은 커밋한다.
 - 검증 명령: `npm run typecheck`(= `next typegen && tsc --noEmit`), `npm run lint`, `npm run build`. 셋 다 통과해야 완료다. `LayoutProps` 같은 라우트 전역 타입은 `next typegen`/`next dev`/`next build` 가 만드는 `next-env.d.ts`·`.next/types` 에서 오므로, 깨끗한 체크아웃(CI)에서는 tsc 단독 실행이 실패한다 (세션 17).
+- **배포는 EC2 standalone** (세션 21). `next.config.ts` 기본 `output: "standalone"`, 서버에는 Node 만 있고 `npm install` 을 돌리지 않는다. 서버 환경변수의 유일한 출처는 `/srv/docufit/shared/.env`(systemd EnvironmentFile) — 아카이브에 `.env` 가 실리지 않게 `package-standalone.mjs` 가 지운다. 빌드 러너(ubuntu-latest, x86_64)와 EC2 아키텍처가 같아야 한다(sharp 등 네이티브 바이너리). `headers()` 의 no-store 는 `/_next/static` 을 제외한다 — 해시 자산까지 no-store 를 걸면 방문마다 1MB 넘는 JS 를 다시 받는다.
 - `src/generated/prisma` 는 커밋하지 않고 `postinstall`(`prisma generate`)이 만든다. CI 에는 `prisma7.config.ts` 가 읽는 `DATABASE_URL` 형식상 더미 값이 필요하다.
 - 셸 명령은 **절대 경로**를 쓴다. `cd` 상태가 호출 간에 유지되어 엉뚱한 곳에 파일이 생긴 전례가 있다 (HISTORY 세션 1).
 - 커밋 메시지, 코드 주석, 문서는 한국어. 식별자는 영어. 커밋 형식 `타입: 요약` (feat / fix / docs / chore / refactor).

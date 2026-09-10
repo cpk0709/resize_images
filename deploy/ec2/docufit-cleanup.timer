@@ -1,0 +1,11 @@
+# 10분마다 docufit-cleanup.service 실행. TTL 60분을 지키려면 이 간격이 충분히 짧아야 한다.
+[Unit]
+Description=Run DocuFit cleanup every 10 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

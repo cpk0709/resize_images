@@ -16,6 +16,7 @@
 - **로컬에서 아직 안 한 것:** DB 마이그레이션(`prisma migrate dev --name init`), S3 자격증명 연결. 로컬 `.env` 에는 CRON_SECRET 만 채워져 있음
 - **프로덕션 헤더:** `next start` 로 실측 완료 (세션 11) — `no-store`, `nosniff`, `DENY`, `no-referrer` 적용. 실서비스 URL 에서 한 번 더 확인할 것.
 - **원격 저장소:** `https://github.com/cpk0709/resize_images.git` (origin, 브랜치 main)
+- **정식 배포(진행 중, 세션 21):** **EC2** 로 결정(사용자). 저장소 쪽 준비 완료 — `output: "standalone"`, `npm run build:standalone`, `deploy/ec2/{setup.sh,release.sh,docufit.service,cleanup 타이머}`, `deploy/nginx/docufit.conf`, `.github/workflows/deploy-ec2.yml`(변수 `EC2_DEPLOY_ENABLED=true` 일 때만 실행). **사용자 쪽 남은 일:** 인스턴스 생성 → `setup.sh` → 배포 키·Secrets 등록 → 도메인 A 레코드 → `setup.sh --domain`. 절차는 README "배포 (EC2, 정식)".
 - **임시 배포(운영 중):** GitHub Pages **https://cpk0709.github.io/resize_images/** — main push 마다 `.github/workflows/deploy-pages.yml` 이 정적 export(`npm run build:pages`)를 배포(약 1~2분). 2026-09-10 세션 17 에 첫 배포 성공, 실배포 주소에서 전 스모크 통과. 정적 호스팅이라 보안 헤더 미적용, 서버 라우트 없음. 정식 배포는 Vercel 예정.
 
 ## 다음 할 일 (우선순위 순)
@@ -23,11 +24,10 @@
 Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한다. 각 소단계가 끝나면 로컬에서 직접 눌러볼 수 있어야 한다.
 
 1. **SEO 최적화** (사용자 지시, 2026-09-10; 파비콘은 세션 18 완료, 세션 20 에서 브랜드 파랑으로 재생성) — 대상: 관공서·은행 사이트에 서류 사진을 올리다 용량·확장자 제한에 막힌 사람. 할 일: manifest(`manifest.ts`, force-static, basePath 주의), 한국어 검색 의도에 맞는 title·description·키워드(예: "정부24 첨부파일 용량 초과", "HEIC JPG 변환", "전입신고 서류 사진 10MB", "이미지 용량 줄이기 무료"), Open Graph·Twitter 카드 이미지, `robots.txt`·`sitemap.xml`(`app/robots.ts`, `app/sitemap.ts` — 정적 export 에서는 `dynamic = "force-static"` 필요), JSON-LD(WebApplication/FAQ), 랜딩 본문에 검색 의도를 담은 설명·FAQ 섹션(프라이버시 강조), `metadataBase` = **https://cpk0709.github.io/resize_images**(basePath 포함 주의)·canonical, `lang="ko"`.
-2. **HEIC 실파일 검증** 아이폰 사진(HEIC)을 실제로 올려 변환·썸네일·"HEIC → JPG 변환됨" 배지를 확인. 실패 시 `src/lib/image/heic.ts` 부터 본다.
-2. **Phase 4 배포 실행** 사용자가 Vercel 에 배포(`vercel link && vercel --prod`) → 실서비스 URL 에서 `curl -sI <url> | grep -i cache-control` 로 `no-store` 확인 → 아이폰 HEIC 실기기 테스트 → `src/app/privacy/page.tsx` 3절에 호스팅 업체·접속 로그 보관 기간 기입. (헤더·개인정보 안내·크론 스케줄·README·모바일 레이아웃은 세션 11 에서 완료)
-3. **품질 후속(선택)** 병합 진행률 표시(현재는 스피너 문구만), 에디터 창 크기 변경 시 캔버스 재배치, 에디터 핀치 줌·휠 줌(현재는 +/− 버튼만), 모자이크 블록 크기 조절, A4 비율 크롭 프리셋, PDF 페이지 여백 옵션.
-4. **Phase 3 서버 폴백 (선택)** 캔버스 한계 초과 시 동의 후 가리기 끝난 결과만 sharp 로 압축, S3 + 10분 presigned + 60분 파기. 미결 결정 1 에 따라 Phase 2 출시 후로 미룰 수 있음.
-5. **Phase 4 배포** 배포 대상 결정, 프로덕션 `no-store` 확인, 개인정보처리방침 페이지, 접속 로그 보관 정책, (폴백 사용 시) 크론 실동작 검증 + S3 Lifecycle.
+2. **EC2 정식 배포 실행** (사용자 결정, 세션 21) — 사용자: 인스턴스 생성(서울, Ubuntu 24.04 x86_64, 탄력적 IP) → `sudo bash deploy/ec2/setup.sh` → 배포 키 + Secrets(EC2_HOST/EC2_USER/EC2_SSH_KEY) + 변수 `EC2_DEPLOY_ENABLED=true` → push 로 첫 배포 → 도메인 구매·A 레코드 → `setup.sh --domain --email`. 그 뒤: `curl -sI https://<도메인>/ | grep -i cache-control` 로 `no-store` 확인, `src/app/privacy/page.tsx` 3절에 "AWS 서울 EC2 · nginx 접속 로그 보관 기간" 기입, GitHub Pages 워크플로 유지 여부 결정, `metadataBase` 를 새 도메인으로.
+3. **HEIC 실파일 검증** 아이폰 사진(HEIC)을 실제로 올려 변환·썸네일·"HEIC → JPG 변환됨" 배지를 확인. 실패 시 `src/lib/image/heic.ts` 부터 본다.
+4. **품질 후속(선택)** 병합 진행률 표시(현재는 스피너 문구만), 에디터 창 크기 변경 시 캔버스 재배치, 에디터 핀치 줌·휠 줌(현재는 +/− 버튼만), 모자이크 블록 크기 조절, A4 비율 크롭 프리셋, PDF 페이지 여백 옵션.
+5. **Phase 3 서버 폴백 (선택)** 캔버스 한계 초과 시 동의 후 가리기 끝난 결과만 sharp 로 압축, S3 + 10분 presigned + 60분 파기(EC2 에서는 `docufit-cleanup.timer` 활성화 + S3 Lifecycle). 미결 결정 1 에 따라 Phase 2 출시 후로 미룰 수 있음.
 
 ## 미결 결정 (사용자 답 필요)
 
@@ -41,6 +41,14 @@ Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한�
 ---
 
 ## 타임라인 (최신이 위)
+
+### 2026-09-10 · 세션 21 · EC2 정식 배포 준비 (standalone 빌드 · 서버 설정 스크립트 · 배포 워크플로)
+- **배경:** 사용자 질문 "도메인 사서 서버 배포하면 유입에 좋을까, 광고 가능할까" → 답: 도메인·정식 배포는 SEO·신뢰에 필수, 광고는 트래픽 확인 뒤 결정(프라이버시 약속과 충돌, Vercel Hobby 는 상업 이용 금지). 사용자가 **EC2 로 배포** 결정, 스텝바이스텝 요청.
+- **권장 구성:** 서울 리전, t3.small(또는 무료 티어 t3.micro), Ubuntu 24.04 **x86_64**(GitHub 러너와 같은 아키텍처 — sharp 등 네이티브 모듈 때문에 ARM(t4g) 은 피함), 탄력적 IP, 보안 그룹 22(내 IP)/80/443. 서버에는 Node 22 + nginx 만. 빌드는 GitHub Actions.
+- **한 것:** `next.config.ts` 기본 `output: "standalone"`. `scripts/package-standalone.mjs`(`npm run build:standalone`): `.next/static`·`public` 복사, `RELEASE`(커밋 해시) 기록, **빌드 머신의 `.env*` 제거**(Next 가 standalone 에 .env 를 복사해 넣는 것을 로컬 검증에서 발견 — 로컬 빌드 아카이브에 CRON_SECRET 이 실릴 수 있었다). `deploy/ec2/setup.sh`(1회: 패키지·계정·디렉터리·.env 생성·systemd·nginx·ufw·sudoers·certbot 옵션), `deploy/ec2/release.sh`(풀기 → current 심볼릭 링크 원자 교체 → restart → 30초 헬스 체크 → 실패 시 이전 릴리스 롤백 → 최근 3개 유지), `docufit.service`(docufit 계정, 127.0.0.1:3000, EnvironmentFile, ProtectSystem=strict 등 최소 권한), `docufit-cleanup.{service,timer}`(Phase 3 용, 설치만), `deploy/nginx/docufit.conf`(프록시 + HSTS, 캐시 정책은 Next 에 위임), `.github/workflows/deploy-ec2.yml`(typecheck·lint → build:standalone → tar → scp → release.sh → 헤더 확인; Secrets EC2_HOST/EC2_USER/EC2_SSH_KEY, 변수 EC2_DEPLOY_ENABLED 게이트, 취소 금지 concurrency). `.gitattributes` 로 `*.sh`·`deploy/**` LF 강제. README 배포 절을 EC2 로 교체, package.json 중복 `postinstall` 키 정리.
+- **결함 수정:** `headers()` 의 `source: "/(.*)"` 가 `/_next/static` 까지 `no-store` 를 걸어 해시 자산(글꼴·heic2any 1.3MB)이 방문마다 다시 받히던 것 → `/((?!_next/static).*)` 로 제외. standalone 로컬 실행으로 확인: `/` no-store, 청크 `public, max-age=31536000, immutable`, `/api/cron/cleanup` 401 + no-store.
+- **검증:** `npm run build:standalone` → `.next/standalone` 에 server.js·.next/static·RELEASE, `.env` 없음. `PORT=3100 node server.js` 로 헤더·404·API 확인. 서버 쪽 스크립트는 실제 EC2 가 없어 **미실행** — 첫 실행 때 오류가 나면 setup.sh 부터 본다.
+- **다음:** 사용자: EC2 생성 → setup.sh → 배포 키·Secrets·변수 등록 → push 로 첫 배포 → 도메인 구매·A 레코드 → `setup.sh --domain --email`. 그 뒤 GitHub Pages 워크플로를 스테이징으로 남길지 결정, 개인정보 안내 3절에 "AWS(서울) EC2, nginx 접속 로그 보관 기간" 기입, SEO.
 
 ### 2026-09-10 · 세션 20 · UI 전면 리디자인 — "전문 디자인팀" 시안(v2) 적용
 - **배경:** 사용자가 GPT 에 "회사 디자인팀이 만든 것처럼 업그레이드" 를 요청해 받은 시안 `docs/design/studio-concept-v2.png` 을 첨부하며 "현재 페이지는 묘하게 AI 가 만든 것 같은 디자인" 이라 지적, 동일하게 업그레이드 요청. 시안에 있지만 우리 서비스에 없는 것(계정·알림·프로젝트·문서함, 해상도 dpi, 품질 슬라이더, "다시 최적화")은 **만들지 않았다** — 회원가입·저장이 없는 서비스라 거짓 UI 가 된다. 그 자리는 프라이버시 배지·실제 설정·실제 결과로 채웠다.

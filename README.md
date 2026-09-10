@@ -63,28 +63,38 @@ npm run build:pages      # 로컬에서 같은 빌드 재현 → out/
 
 - `scripts/build-pages.mjs` 가 `GITHUB_PAGES=true` 로 `next build` 를 돌린다. `next.config.ts` 는 이때만 `output: "export"`, `basePath: "/resize_images"`, `trailingSlash: true` 를 켠다.
 - 정적 export 는 Request 를 읽는 Route Handler 를 지원하지 않아, 빌드 동안 `src/app/api` 를 옆으로 옮겨 두고 끝나면 복원한다. 현재 버전(브라우저 전용)은 서버 라우트를 쓰지 않으므로 기능 차이는 없다.
-- **정적 호스팅은 응답 헤더를 제어할 수 없다.** `Cache-Control: no-store` 등 보안 헤더는 Node 서버 배포(아래 Vercel)에서만 적용된다. 파일은 서버로 가지 않으므로 캐시에 남는 것은 코드뿐이지만, 정식 배포는 Vercel 을 권장한다.
+- **정적 호스팅은 응답 헤더를 제어할 수 없다.** `Cache-Control: no-store` 등 보안 헤더는 Node 서버 배포(아래 EC2)에서만 적용된다. 파일은 서버로 가지 않으므로 캐시에 남는 것은 코드뿐이지만, 정식 배포는 EC2 다.
 - 첫 배포 전 저장소 Settings → Pages → Source 를 **GitHub Actions** 로 두어야 한다. 워크플로가 자동 활성화(enablement)를 시도하지만 권한에 따라 수동 설정이 필요할 수 있다.
 
-## 배포 (Vercel 기준)
+## 배포 (EC2, 정식)
 
-현재 버전(Phase 2)은 **브라우저 전용**이라 DB·S3 없이도 동작한다. 서버 처리 옵션(Phase 3)을 켜기 전까지는 환경변수 없이 배포해도 된다.
+Ubuntu 24.04 (x86_64) EC2 한 대에 Node 서버(standalone) + nginx(TLS) 로 운영한다. 빌드는 GitHub Actions 가 하고 서버에는
+Node 만 있으면 된다. 현재 버전(Phase 2)은 **브라우저 전용**이라 DB·S3 없이 동작한다.
 
-```bash
-npm i -g vercel
-vercel link            # cpk0709/resize_images 저장소 연결
-vercel --prod
-```
+**권장 사양**: 서울(ap-northeast-2), t3.small(2GB) 또는 무료 티어 t3.micro, Ubuntu Server 24.04 LTS **x86_64**(빌드 러너와 같은
+아키텍처여야 네이티브 모듈이 맞는다), gp3 20GB, 탄력적 IP, 보안 그룹 22(내 IP만)·80·443.
 
-- `vercel.json` 의 크론(`/api/cron/cleanup`)은 Hobby 플랜 제한(하루 1회)에 맞춰 매일 18:00 UTC(한국 03:00)로 잡혀 있다.
-  서버 처리 옵션을 켜서 1시간 TTL 을 보장해야 할 때는 Pro 플랜에서 `*/10 * * * *` 로 바꾸거나 외부 스케줄러로 같은 엔드포인트를 호출한다.
-- 환경변수가 없으면 크론 엔드포인트는 인증 실패 시 401, 인증 성공 시 503(설정 없음)을 돌려주며 페이지 동작에는 영향이 없다.
-- 배포 후 확인: `curl -sI https://<도메인>/ | grep -i cache-control` 이 `no-store` 여야 한다.
+1. **서버 초기 설정** (인스턴스에 SSH 접속 후 한 번):
+   ```bash
+   git clone https://github.com/cpk0709/resize_images.git && cd resize_images
+   sudo bash deploy/ec2/setup.sh                                                # 도메인이 아직 없으면 HTTP 만
+   sudo bash deploy/ec2/setup.sh --domain docufit.kr --email me@example.com    # 도메인 A 레코드가 이 IP 를 가리킨 뒤: HTTPS 까지
+   ```
+   nginx·ufw·Node 22·실행 계정(docufit)·`/srv/docufit/{releases,shared,bin}`·systemd 서비스·`/srv/docufit/shared/.env`(CRON_SECRET 자동 생성) 을 만든다. 다시 실행해도 `.env` 는 덮어쓰지 않는다.
+2. **배포용 SSH 키**: 로컬 PC 에서 `ssh-keygen -t ed25519 -f docufit-deploy -N ""` → `docufit-deploy.pub` 내용을 서버의 `/home/ubuntu/.ssh/authorized_keys` 에 한 줄 추가.
+3. **GitHub 저장소 설정** (Settings → Secrets and variables → Actions): Secrets `EC2_HOST`(탄력적 IP 또는 도메인), `EC2_USER`(`ubuntu`), `EC2_SSH_KEY`(개인키 `docufit-deploy` 전체 내용). Variables `EC2_DEPLOY_ENABLED` = `true`.
+4. 이후 `main` 에 push 하면 `.github/workflows/deploy-ec2.yml` 이 `npm run build:standalone` → tar → scp → `release.sh`(풀기 · `current` 심볼릭 링크 교체 · 재시작 · 헬스 체크 · 실패 시 이전 릴리스로 롤백) → 응답 헤더 확인을 수행한다.
+
+- `npm run build:standalone` = `next build`(output standalone) + `scripts/package-standalone.mjs`. 스크립트가 `.next/static`·`public` 을 넣고 빌드 머신의 `.env*` 를 제거한다. 서버 환경변수의 유일한 출처는 `/srv/docufit/shared/.env`(systemd `EnvironmentFile`, root 600).
+- 캐시 정책은 Next 가 정한다: 페이지·API 는 `Cache-Control: no-store`, `/_next/static`(해시 자산)은 1년 `immutable`. 확인: `curl -sI https://<도메인>/ | grep -i cache-control`.
+- 서버 처리 옵션(Phase 3)을 켤 때: `.env` 에 DB·S3 를 채우고 `sudo systemctl enable --now docufit-cleanup.timer`(10분마다 파기 크론 호출).
+- 운영: `sudo systemctl status docufit`, `journalctl -u docufit -f`, nginx 로그 `/var/log/nginx/docufit.*.log`. 릴리스는 `/srv/docufit/releases/<sha>`(최근 3개 유지).
+- GitHub Pages 배포(`deploy-pages.yml`)는 도메인 전환 전까지 스테이징으로 함께 유지한다. Vercel 은 쓰지 않는다(`vercel.json` 은 참고용).
 
 ## 검증
 
 ```bash
-npx tsc --noEmit
+npm run typecheck
 npm run lint
 npm run build
 ```

@@ -1,0 +1,12 @@
+# TTL 파기 크론 (Phase 3 서버 처리 옵션을 켤 때만 활성화). docufit-cleanup.timer 가 10분마다 실행한다.
+# Vercel 크론(vercel.json) 대신 EC2 에서는 systemd 타이머로 같은 엔드포인트를 호출한다.
+#   sudo systemctl enable --now docufit-cleanup.timer
+[Unit]
+Description=DocuFit expired file cleanup
+After=docufit.service
+Requires=docufit.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/srv/docufit/shared/.env
+ExecStart=/usr/bin/curl -fsS --max-time 60 -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/cleanup
