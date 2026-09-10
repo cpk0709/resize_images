@@ -16,6 +16,10 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  # postinstall 의 `prisma generate` 가 prisma7.config.ts 를 읽을 때 필요한 형식상 값. 실제 DB 에 접속하지 않는다.
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
 jobs:
   build:
     runs-on: ubuntu-latest
