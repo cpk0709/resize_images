@@ -104,7 +104,8 @@ prisma/schema.prisma      FileAsset, CleanupRun
 - **pdf-lib 함정:** `save()` 가 Info dict 의 Producer 를 항상 "pdf-lib (...)" 로 덮어쓴다 (`updateMetadata: false` 로도 안 막힘). 우리 표식은 `setCreator` 로만 남긴다. PDF 메타데이터에 원본 파일명을 넣지 않는다.
 - **fabric v7 함정:** 객체 기준점 `originX/originY` 기본값이 `center` 다 (v6 까지는 left/top). `left/top` 을 좌상단 좌표로 쓰려면 객체 생성 시 `originX: "left", originY: "top"` 을 명시한다. 배경 이미지가 1/4 만 보이거나 사각형이 어긋나면 이 문제다 (HISTORY 세션 7). 픽셀 좌표 환산은 origin 과 무관한 `getBoundingRect()` 를 쓴다.
 - 스키마를 바꾸면 `npx prisma generate` 후 `npx prisma migrate dev --name <설명>`. 마이그레이션 파일은 커밋한다.
-- 검증 명령: `npx tsc --noEmit`, `npm run lint`, `npm run build`. 셋 다 통과해야 완료다.
+- 검증 명령: `npm run typecheck`(= `next typegen && tsc --noEmit`), `npm run lint`, `npm run build`. 셋 다 통과해야 완료다. `LayoutProps` 같은 라우트 전역 타입은 `next typegen`/`next dev`/`next build` 가 만드는 `next-env.d.ts`·`.next/types` 에서 오므로, 깨끗한 체크아웃(CI)에서는 tsc 단독 실행이 실패한다 (세션 17).
+- `src/generated/prisma` 는 커밋하지 않고 `postinstall`(`prisma generate`)이 만든다. CI 에는 `prisma7.config.ts` 가 읽는 `DATABASE_URL` 형식상 더미 값이 필요하다.
 - 셸 명령은 **절대 경로**를 쓴다. `cd` 상태가 호출 간에 유지되어 엉뚱한 곳에 파일이 생긴 전례가 있다 (HISTORY 세션 1).
 - 커밋 메시지, 코드 주석, 문서는 한국어. 식별자는 영어. 커밋 형식 `타입: 요약` (feat / fix / docs / chore / refactor).
 - 사용자와의 대화는 한국어.
