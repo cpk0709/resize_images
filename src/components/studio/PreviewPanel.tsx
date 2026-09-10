@@ -133,7 +133,8 @@ export function PreviewPanel({
 
       {/* 높이를 뷰포트 기준으로 고정한다. 세로로 긴 사진이 패널을 화면 밖까지 늘리지 않게. */}
       {/* 모바일은 화면이 좁고 세로 스크롤이 길어 절반 높이로, 데스크톱은 넉넉하게. */}
-      <div className="mt-4 h-[clamp(280px,50vh,1000px)] lg:h-[clamp(320px,62vh,1000px)]">
+      {/* 편집 중에는 모바일도 넉넉하게: 도구 줄이 3~4줄로 접혀 캔버스 몫이 줄어들고, 세밀한 영역을 그려야 해서 캔버스가 커야 한다. */}
+      <div className={["mt-4 lg:h-[clamp(320px,62vh,1000px)]", editing ? "h-[clamp(480px,72vh,1000px)]" : "h-[clamp(280px,50vh,1000px)]"].join(" ")}>
         {editing ? (
           <ImageEditor key={image.id + image.previewUrl} image={image} initialTool={editingTool} onApply={onApplyEdit} onCancel={onCancelEdit} />
         ) : merge ? (

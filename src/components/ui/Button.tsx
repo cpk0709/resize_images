@@ -43,6 +43,37 @@ export function ToggleButton({ active, className = "", type = "button", children
   );
 }
 
+interface IconButtonProps extends NativeButtonProps {
+  /** 스크린리더용 이름. 아이콘만 있는 버튼이므로 필수. */
+  label: string;
+  active?: boolean;
+  className?: string;
+  children: ReactNode;
+}
+
+/**
+ * 아이콘만 있는 정사각 버튼(줌 컨트롤 등). 최소 36px 로 모바일 탭 타깃을 확보한다.
+ * `active` 는 토글 상태(예: 이동 모드)를 나타내며 ToggleButton 과 같은 색을 쓴다.
+ */
+export function IconButton({ label, active = false, className = "", type = "button", children, ...rest }: IconButtonProps) {
+  return (
+    <button
+      type={type}
+      aria-label={label}
+      title={label}
+      aria-pressed={active}
+      className={[
+        "inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+        active ? "border-transparent bg-accent-soft text-navy ring-1 ring-inset ring-navy/35" : "border-line bg-panel text-ink hover:border-navy/30 hover:bg-surface",
+        className,
+      ].join(" ")}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
 export type ActionVariant = "primary" | "secondary" | "ghost" | "hero";
 export type ActionSize = "sm" | "md" | "lg" | "xl";
 

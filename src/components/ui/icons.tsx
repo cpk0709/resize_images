@@ -79,6 +79,32 @@ export function IconPlus(props: IconProps) {
   );
 }
 
+export function IconMinus(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+/** 화면에 맞춤 (네 모서리) */
+export function IconFit(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4" />
+    </svg>
+  );
+}
+
+/** 이동(패닝) 손 모양 */
+export function IconHand(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v7.5a5.5 5.5 0 0 1-5.5 5.5H11a5 5 0 0 1-4.2-2.3L4.4 14a1.5 1.5 0 0 1 2.5-1.6L8 14" />
+    </svg>
+  );
+}
+
 export function IconLock(props: IconProps) {
   return (
     <svg {...base(props)}>
