@@ -11,8 +11,8 @@
 
 - **Phase:** **Phase 2 전체 완료** (세션 9: 2-3 이어붙이기·PDF). 업로드 → 편집(가리기·크롭·회전) → 출력(파일별 JPG/PNG, 세로/가로 이어붙이기, 페이지별 PDF) 이 모두 브라우저 안에서 동작한다. 다음은 Phase 4 배포 준비 (Phase 3 서버 폴백은 미결 결정 1 대로 보류).
 - **UI 기준:** `docs/design/studio-concept-v1.png` (Gemini 시안) + 사용자 피드백. 데스크톱 3열: 컨트롤 패널(설정) / 편집 캔버스(드롭존·카드 덱) / 미리보기·편집 패널 + 하단 액션 바(hero 버튼, 우측). **모바일 1열: 서류 추가 → 설정(가로 스크롤 프리셋) → 미리보기, 최종 버튼은 화면 하단 고정.** 버튼은 `src/components/ui/Button.tsx`, 아이콘은 `src/components/ui/icons.tsx` 만 사용. 라이트 테마 단일.
-- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-10 세션 16). Chrome 헤드리스(CDP) 스모크: 스튜디오 30 + 에디터 30 + 병합/PDF 37 + 병합 중 편집 23 + 모바일 15 체크 통과. 실패 집계는 스크립트가 출력하는 `FAILS=` 값을 읽는다 (`grep -c '^FAIL'` 은 요약 줄까지 센다). HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
-- **스모크 테스트 자산 위치:** `%TEMP%\docufit-smoke\` (cdp-studio.mjs, cdp-editor.mjs, cdp-merge.mjs, cdp-merge-edit.mjs, 테스트 이미지). `.next/` 아래에 두면 `next build` 가 지운다. 이 PC 에만 있으므로 다른 PC 에서는 HISTORY 의 검증 절을 참고해 재작성해야 한다.
+- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-10 세션 19). Chrome 헤드리스(CDP) 스모크: 스튜디오 30 + 에디터 30 + 병합/PDF 37 + 병합 중 편집 23 + 모바일 15 + 에디터 확대 53 체크 통과. 실패 집계는 스크립트가 출력하는 `FAILS=` 값을 읽는다 (`grep -c '^FAIL'` 은 요약 줄까지 센다). HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
+- **스모크 테스트 자산 위치:** `%TEMP%\docufit-smoke\` (cdp-studio.mjs, cdp-editor.mjs, cdp-merge.mjs, cdp-merge-edit.mjs, cdp-mobile.mjs, cdp-zoom.mjs, 테스트 이미지). `.next/` 아래에 두면 `next build` 가 지운다. 이 PC 에만 있으므로 다른 PC 에서는 HISTORY 의 검증 절을 참고해 재작성해야 한다.
 - **로컬에서 아직 안 한 것:** DB 마이그레이션(`prisma migrate dev --name init`), S3 자격증명 연결. 로컬 `.env` 에는 CRON_SECRET 만 채워져 있음
 - **프로덕션 헤더:** `next start` 로 실측 완료 (세션 11) — `no-store`, `nosniff`, `DENY`, `no-referrer` 적용. 실서비스 URL 에서 한 번 더 확인할 것.
 - **원격 저장소:** `https://github.com/cpk0709/resize_images.git` (origin, 브랜치 main)
@@ -22,10 +22,10 @@
 
 Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한다. 각 소단계가 끝나면 로컬에서 직접 눌러볼 수 있어야 한다.
 
-1. **파비콘 · SEO 최적화** (사용자 지시, 2026-09-10) — 대상: 관공서·은행 사이트에 서류 사진을 올리다 용량·확장자 제한에 막힌 사람. 할 일: 파비콘/아이콘 세트(`app/icon`, `apple-icon`, manifest), 한국어 검색 의도에 맞는 title·description·키워드(예: "정부24 첨부파일 용량 초과", "HEIC JPG 변환", "전입신고 서류 사진 10MB", "이미지 용량 줄이기 무료"), Open Graph·Twitter 카드 이미지, `robots.txt`·`sitemap.xml`(`app/robots.ts`, `app/sitemap.ts` — 정적 export 에서는 `dynamic = "force-static"` 필요), JSON-LD(WebApplication/FAQ), 랜딩 본문에 검색 의도를 담은 설명·FAQ 섹션(프라이버시 강조), `metadataBase` = **https://cpk0709.github.io/resize_images**(basePath 포함 주의)·canonical, `lang="ko"`.
+1. **SEO 최적화** (사용자 지시, 2026-09-10; 파비콘은 세션 18 완료) — 대상: 관공서·은행 사이트에 서류 사진을 올리다 용량·확장자 제한에 막힌 사람. 할 일: manifest(`manifest.ts`, force-static, basePath 주의), 한국어 검색 의도에 맞는 title·description·키워드(예: "정부24 첨부파일 용량 초과", "HEIC JPG 변환", "전입신고 서류 사진 10MB", "이미지 용량 줄이기 무료"), Open Graph·Twitter 카드 이미지, `robots.txt`·`sitemap.xml`(`app/robots.ts`, `app/sitemap.ts` — 정적 export 에서는 `dynamic = "force-static"` 필요), JSON-LD(WebApplication/FAQ), 랜딩 본문에 검색 의도를 담은 설명·FAQ 섹션(프라이버시 강조), `metadataBase` = **https://cpk0709.github.io/resize_images**(basePath 포함 주의)·canonical, `lang="ko"`.
 2. **HEIC 실파일 검증** 아이폰 사진(HEIC)을 실제로 올려 변환·썸네일·"HEIC → JPG 변환됨" 배지를 확인. 실패 시 `src/lib/image/heic.ts` 부터 본다.
 2. **Phase 4 배포 실행** 사용자가 Vercel 에 배포(`vercel link && vercel --prod`) → 실서비스 URL 에서 `curl -sI <url> | grep -i cache-control` 로 `no-store` 확인 → 아이폰 HEIC 실기기 테스트 → `src/app/privacy/page.tsx` 3절에 호스팅 업체·접속 로그 보관 기간 기입. (헤더·개인정보 안내·크론 스케줄·README·모바일 레이아웃은 세션 11 에서 완료)
-3. **품질 후속(선택)** 병합 진행률 표시(현재는 스피너 문구만), 에디터 창 크기 변경 시 캔버스 재배치, 모자이크 블록 크기 조절, A4 비율 크롭 프리셋, PDF 페이지 여백 옵션.
+3. **품질 후속(선택)** 병합 진행률 표시(현재는 스피너 문구만), 에디터 창 크기 변경 시 캔버스 재배치, 에디터 핀치 줌·휠 줌(현재는 +/− 버튼만), 모자이크 블록 크기 조절, A4 비율 크롭 프리셋, PDF 페이지 여백 옵션.
 4. **Phase 3 서버 폴백 (선택)** 캔버스 한계 초과 시 동의 후 가리기 끝난 결과만 sharp 로 압축, S3 + 10분 presigned + 60분 파기. 미결 결정 1 에 따라 Phase 2 출시 후로 미룰 수 있음.
 5. **Phase 4 배포** 배포 대상 결정, 프로덕션 `no-store` 확인, 개인정보처리방침 페이지, 접속 로그 보관 정책, (폴백 사용 시) 크론 실동작 검증 + S3 Lifecycle.
 
@@ -41,6 +41,13 @@ Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한�
 ---
 
 ## 타임라인 (최신이 위)
+
+### 2026-09-10 · 세션 19 · 에디터 확대·축소 (+/−, 맞춤, 이동 모드) — 모바일에서 세밀한 가리기·크롭
+- **배경:** 사용자 보고 "모바일에서 크롭·가리기 할 때 이미지가 너무 작아 컨트롤이 어렵다". 원인은 둘: (1) 확대 수단이 없었다. (2) 모바일 편집 영역이 `50vh`(422px) 인데 도구 줄이 3~4줄로 접혀 실제 캔버스는 150px 남짓이었다.
+- **한 것:** `ImageEditor` 에 확대 단계 `1 / 1.5 / 2 / 3 / 4` (`ZOOM_STEPS`). 구현은 fabric **뷰포트 줌**(`canvas.setZoom`) + `setDimensions` 로 캔버스 요소를 배율만큼 키우고, 스크롤 컨테이너(`overflow-auto`, 내부 `m-auto` 래퍼) 안에서 움직인다. scene 좌표(맞춤 배율)는 그대로라 `collectRegions`/`refreshMosaic` 의 이미지 픽셀 환산은 손대지 않았다. 확대 시 뷰포트 중심 지점 유지(캔버스·컨테이너 화면 좌표 차이로 계산 — 스크롤 위치만 쓰면 m-auto 로 가운데 놓인 캔버스에서 어긋난다). 회전으로 캔버스를 재생성해도 `zoomRef` 로 배율 유지. **이동 모드**(손 아이콘): fabric 이 캔버스에 `touch-action: none` 을 걸어 손가락 스크롤이 안 되므로, 오버레이 div 가 Pointer Events 드래그·휠을 컨테이너 스크롤로 바꾼다. 확대 1 이면 자동 해제. 컨트롤은 도구 줄 오른쪽(`ml-auto`) `[−][%][+][맞춤][이동]`, 아이콘 전용 `IconButton`(36px, aria-label/title) 을 `Button.tsx` 에 추가, `IconMinus/IconFit/IconHand` 추가. 안내 문구가 이동 모드일 때 바뀐다. `PreviewPanel` 은 편집 중 모바일 높이를 `clamp(480px,72vh,1000px)` 로 확대. 도구 줄 세로 구분선 제거(줄바꿈 시 줄 끝·줄 머리에 걸려 어색).
+- **결정:** (1) 줌 컨트롤을 캔버스 위에 띄우지 않는다 — 서류 모서리(가릴 내용이 있을 수 있는 자리)를 덮기 때문. (2) 스크롤 시 `calcOffset` 재계산은 넣지 않았다 — fabric v7 은 포인터 좌표를 읽을 때마다 `calcOffset()` 을 호출한다 (`_getPointerImpl`). (3) 핀치·휠 줌은 이번 범위 밖(후속 후보).
+- **검증(`cdp-zoom.mjs` 53 체크, FAILS=0):** 모바일 390×844 터치 에뮬레이션 — 100% 에서 스크롤 없음·축소/맞춤/이동 비활성, 확대 ×2 → 캔버스 폭·높이 정확히 2배·가로세로 스크롤 가능·스크롤이 가운데, 스크롤한 상태에서 **터치 드래그**로 가리기 → 적용 → 결과 픽셀(영역 안 검정 3점, 밖 파랑 2점), 이동 모드 터치 드래그로 scrollLeft/Top 정확히 (+60,+50) 이동·영역 미생성, 회전 뒤 200% 유지 → 맞춤 → 정확히 절반, 400% 상한, 취소 시 원본 유지. 데스크톱 1800×1100 — 휠 네이티브 스크롤, 마우스 드래그 가리기 → 픽셀 검사. 회귀: 에디터 30 / 모바일 15 / 병합 중 편집 23 / 스튜디오 전부 통과. `tsc`/`lint`/`build` 통과. 첫 실행에서 잡은 결함 2건(중심 유지 계산, 모바일 편집 높이 부족) 을 고친 뒤 재검증.
+- **다음:** SEO. 사용자 실기기(아이폰) 에서 확대·이동 모드 손맛 확인.
 
 ### 2026-09-10 · 세션 18 · 파비콘 교체 (DocuFit 브랜드 마크)
 - **한 것:** `src/app/icon.svg` 원본(남색 rx14 타일 + 접힌 모서리 흰 서류 + 우하단 초록 합격 체크, 16px 가독성을 위해 요소 3개로 제한). `scripts/generate-icons.mjs` 가 sharp 로 `icon.png`(48), `apple-icon.png`(180), `favicon.ico`(32, PNG 내장 ICO 를 직접 조립)를 생성. 기본 Next favicon.ico 교체. Next 파일 규약이라 `<link rel="icon">` 4종이 자동 노출되고 basePath 도 자동 적용.
