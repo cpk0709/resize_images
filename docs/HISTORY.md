@@ -10,9 +10,9 @@
 ## 현재 상태
 
 - **Phase:** **Phase 2 전체 완료** (세션 9: 2-3 이어붙이기·PDF). 업로드 → 편집(가리기·크롭·회전) → 출력(파일별 JPG/PNG, 세로/가로 이어붙이기, 페이지별 PDF) 이 모두 브라우저 안에서 동작한다. 다음은 Phase 4 배포 준비 (Phase 3 서버 폴백은 미결 결정 1 대로 보류).
-- **UI 기준:** `docs/design/studio-concept-v1.png` (Gemini 시안) + 사용자 피드백. 데스크톱 3열: 컨트롤 패널(설정) / 편집 캔버스(드롭존·카드 덱) / 미리보기·편집 패널 + 하단 액션 바(hero 버튼, 우측). **모바일 1열: 서류 추가 → 설정(가로 스크롤 프리셋) → 미리보기, 최종 버튼은 화면 하단 고정.** 버튼은 `src/components/ui/Button.tsx`, 아이콘은 `src/components/ui/icons.tsx` 만 사용. 라이트 테마 단일.
-- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-10 세션 19). Chrome 헤드리스(CDP) 스모크: 스튜디오 30 + 에디터 30 + 병합/PDF 37 + 병합 중 편집 23 + 모바일 15 + 에디터 확대 53 체크 통과. 실패 집계는 스크립트가 출력하는 `FAILS=` 값을 읽는다 (`grep -c '^FAIL'` 은 요약 줄까지 센다). HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
-- **스모크 테스트 자산 위치:** `%TEMP%\docufit-smoke\` (cdp-studio.mjs, cdp-editor.mjs, cdp-merge.mjs, cdp-merge-edit.mjs, cdp-mobile.mjs, cdp-zoom.mjs, 테스트 이미지). `.next/` 아래에 두면 `next build` 가 지운다. 이 PC 에만 있으므로 다른 PC 에서는 HISTORY 의 검증 절을 참고해 재작성해야 한다.
+- **UI 기준:** `docs/design/studio-concept-v2.png` (세션 20, "전문 디자인팀" 시안) + 사용자 피드백. 브랜드 파랑 단일(#2563eb), 라이트 테마. 데스크톱(xl) 앱 셸: 상단 앱 바 → 사이드바(프리셋·최적화 설정·용량 확인·설정 초기화) / 서류 업로드·편집(드롭존·카드 덱·기능 안내 3칸) / 미리보기·최적화 결과(3×2 수치 카드)·최종 버튼 → 하단 상태 바 → 푸터. 각 패널이 안에서 스크롤. **모바일 1열: 서류 추가 → 설정(가로 스크롤 프리셋) → 미리보기, 최종 버튼은 화면 하단 고정.** 버튼은 `src/components/ui/Button.tsx`, 아이콘은 `src/components/ui/icons.tsx` 만 사용. 글꼴 Inter + Noto Sans KR(next/font 자체 배포).
+- **빌드 상태:** `tsc` / `lint` / `build` 통과 (2026-09-10 세션 20). Chrome 헤드리스(CDP) 스모크: 스튜디오 29 + 에디터 30 + 병합/PDF 37 + 병합 중 편집 23 + 모바일 15 + 에디터 확대 53 체크 통과 (세션 20 에서 새 라벨에 맞춰 스크립트 갱신). 실패 집계는 스크립트가 출력하는 `FAILS=` 값을 읽는다 (`grep -c '^FAIL'` 은 요약 줄까지 센다). HEIC 실파일 테스트는 미완 (사용자가 나중에 아이폰 사진으로 확인 예정)
+- **스모크 테스트 자산 위치:** `%TEMP%\docufit-smoke\` (cdp-studio.mjs, cdp-editor.mjs, cdp-merge.mjs, cdp-merge-edit.mjs, cdp-mobile.mjs, cdp-zoom.mjs, 디자인 스크린샷용 cdp-shots.mjs, 테스트 이미지). `.next/` 아래에 두면 `next build` 가 지운다. 이 PC 에만 있으므로 다른 PC 에서는 HISTORY 의 검증 절을 참고해 재작성해야 한다.
 - **로컬에서 아직 안 한 것:** DB 마이그레이션(`prisma migrate dev --name init`), S3 자격증명 연결. 로컬 `.env` 에는 CRON_SECRET 만 채워져 있음
 - **프로덕션 헤더:** `next start` 로 실측 완료 (세션 11) — `no-store`, `nosniff`, `DENY`, `no-referrer` 적용. 실서비스 URL 에서 한 번 더 확인할 것.
 - **원격 저장소:** `https://github.com/cpk0709/resize_images.git` (origin, 브랜치 main)
@@ -22,7 +22,7 @@
 
 Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한다. 각 소단계가 끝나면 로컬에서 직접 눌러볼 수 있어야 한다.
 
-1. **SEO 최적화** (사용자 지시, 2026-09-10; 파비콘은 세션 18 완료) — 대상: 관공서·은행 사이트에 서류 사진을 올리다 용량·확장자 제한에 막힌 사람. 할 일: manifest(`manifest.ts`, force-static, basePath 주의), 한국어 검색 의도에 맞는 title·description·키워드(예: "정부24 첨부파일 용량 초과", "HEIC JPG 변환", "전입신고 서류 사진 10MB", "이미지 용량 줄이기 무료"), Open Graph·Twitter 카드 이미지, `robots.txt`·`sitemap.xml`(`app/robots.ts`, `app/sitemap.ts` — 정적 export 에서는 `dynamic = "force-static"` 필요), JSON-LD(WebApplication/FAQ), 랜딩 본문에 검색 의도를 담은 설명·FAQ 섹션(프라이버시 강조), `metadataBase` = **https://cpk0709.github.io/resize_images**(basePath 포함 주의)·canonical, `lang="ko"`.
+1. **SEO 최적화** (사용자 지시, 2026-09-10; 파비콘은 세션 18 완료, 세션 20 에서 브랜드 파랑으로 재생성) — 대상: 관공서·은행 사이트에 서류 사진을 올리다 용량·확장자 제한에 막힌 사람. 할 일: manifest(`manifest.ts`, force-static, basePath 주의), 한국어 검색 의도에 맞는 title·description·키워드(예: "정부24 첨부파일 용량 초과", "HEIC JPG 변환", "전입신고 서류 사진 10MB", "이미지 용량 줄이기 무료"), Open Graph·Twitter 카드 이미지, `robots.txt`·`sitemap.xml`(`app/robots.ts`, `app/sitemap.ts` — 정적 export 에서는 `dynamic = "force-static"` 필요), JSON-LD(WebApplication/FAQ), 랜딩 본문에 검색 의도를 담은 설명·FAQ 섹션(프라이버시 강조), `metadataBase` = **https://cpk0709.github.io/resize_images**(basePath 포함 주의)·canonical, `lang="ko"`.
 2. **HEIC 실파일 검증** 아이폰 사진(HEIC)을 실제로 올려 변환·썸네일·"HEIC → JPG 변환됨" 배지를 확인. 실패 시 `src/lib/image/heic.ts` 부터 본다.
 2. **Phase 4 배포 실행** 사용자가 Vercel 에 배포(`vercel link && vercel --prod`) → 실서비스 URL 에서 `curl -sI <url> | grep -i cache-control` 로 `no-store` 확인 → 아이폰 HEIC 실기기 테스트 → `src/app/privacy/page.tsx` 3절에 호스팅 업체·접속 로그 보관 기간 기입. (헤더·개인정보 안내·크론 스케줄·README·모바일 레이아웃은 세션 11 에서 완료)
 3. **품질 후속(선택)** 병합 진행률 표시(현재는 스피너 문구만), 에디터 창 크기 변경 시 캔버스 재배치, 에디터 핀치 줌·휠 줌(현재는 +/− 버튼만), 모자이크 블록 크기 조절, A4 비율 크롭 프리셋, PDF 페이지 여백 옵션.
@@ -41,6 +41,20 @@ Phase 2 는 **서버 없이 브라우저만으로** 핵심 흐름을 완성한�
 ---
 
 ## 타임라인 (최신이 위)
+
+### 2026-09-10 · 세션 20 · UI 전면 리디자인 — "전문 디자인팀" 시안(v2) 적용
+- **배경:** 사용자가 GPT 에 "회사 디자인팀이 만든 것처럼 업그레이드" 를 요청해 받은 시안 `docs/design/studio-concept-v2.png` 을 첨부하며 "현재 페이지는 묘하게 AI 가 만든 것 같은 디자인" 이라 지적, 동일하게 업그레이드 요청. 시안에 있지만 우리 서비스에 없는 것(계정·알림·프로젝트·문서함, 해상도 dpi, 품질 슬라이더, "다시 최적화")은 **만들지 않았다** — 회원가입·저장이 없는 서비스라 거짓 UI 가 된다. 그 자리는 프라이버시 배지·실제 설정·실제 결과로 채웠다.
+- **디자인 시스템:** `globals.css` 토큰 재정의 — navy/accent/hero 그라데이션 토큰 폐기, `brand`(#2563eb)/`brand-hover`/`brand-soft`/`brand-ring`, `ink/ink-strong/muted/subtle` 3단계 텍스트, `line/line-strong`, pass/warn/fail + soft. 글꼴을 next/font(Inter + Noto Sans KR variable, `display: swap`)로 자체 배포 — 런타임에 Google 로 요청이 나가지 않는다. `Button.tsx`: ToggleButton(선택 = 연한 파랑 배경 + 파랑 테두리), ActionButton primary(단색 파랑)/secondary/ghost/hero(단색 파랑 + 그림자, lg), 크기 xs·sm·md·lg(xl 제거), `leadingIcon`, `whitespace-nowrap`; IconButton 에 `size="sm"`(28px). `icons.tsx` 에 20여 종 추가(Close·Chevron·Refresh·Rotate·Trash·Check·Document·FileImage·Image·Crop·Cursor·EyeOff·Grid·SquareFill·Compress·Swap·Alert·Info·Stack·Copy·Sliders). 유니코드 기호 아이콘(■ ▦ ⌗ ↖ ↺ ↻ ⇅ ⇆ ◀ ▶ ✕ →) 전부 교체. `BrandMark`(앱 바 로고) + `icon.svg` 를 브랜드 파랑으로 바꾸고 파비콘 세트 재생성.
+- **레이아웃:** `layout.tsx` 에 공통 `AppBar`(sticky, 로고 + "100% 브라우저 자체 처리" 배지). `page.tsx` 는 xl 에서 **앱 셸**(`h-[calc(100dvh-6rem)]`, 3열 + 상태 바 행, 패널 내부 스크롤 `scroll-thin`), lg 는 2열(미리보기 col-span-2), 모바일 1열 유지. `SiteFooter`(한 줄, lg 에서 h-10 고정) 는 페이지가 그린다 — 스튜디오는 모바일 고정 바 여백이 필요해서.
+- **사이드바(ControlPanel):** 카드가 아닌 페이지 배경 위 열(lg 에서 오른쪽 구분선). 섹션 제목 13px. 프리셋은 아이콘 타일 + 이름 + "파일 1장 최대 10 MB" + 참고 배지, 선택 = 연한 파랑 배경. "최적화 설정": 파일 형식 3등분 칩, 목표 용량 4등분 칩 + `MB` 접미어 입력, 출력 방식 3등분 칩("개별 파일/세로 병합/가로 병합"). "용량 확인"(SizeMeter 를 카드형으로: 큰 수치 + 판정 배지 + 얇은 바). 맨 아래 **"설정 초기화"**(프리셋·목표·형식·출력 방식 전부 기본으로, 새 `onResetAll`/`isDirty`). 판정 로직은 `studio/sizeVerdict.ts` 로 분리(SizeMeter·StatusBar 공용).
+- **가운데(Studio 섹션):** 제목 "서류 업로드 및 편집" + 설명 두 줄 + "모두 지우기"(ghost, 휴지통). 드롭존: 빈 상태는 큰 아이콘(이미지 든 서류 + 파랑 플러스 배지) + "파일을 드래그 앤 드롭하세요" + primary "파일 선택하기" + 지원 형식 줄; 파일이 있으면 한 줄 compact + "파일 추가". 안쪽 버튼 클릭이 영역 클릭으로 전파돼 대화상자가 두 번 열리지 않게 `stopPropagation`. 카드 덱: 파랑 번호 배지, 닫기 아이콘, 배지 pill, 결과 줄(`→ 9.9 MB (−1%)` + 아이콘 다운로드), 가리기·크롭 xs 버튼 + ‹ › 이동. 하단 `FeatureTiles`(민감정보 가리기·편집 / 용량 최적화 / 포맷 변환·이어붙이기, md 이상).
+- **오른쪽(PreviewPanel):** "미리보기" + 편집 버튼(가리기·크롭·회전·편집, 아이콘) — 헤더의 세로/가로 병합 토글은 사이드바 출력 방식과 중복이라 제거. 미리보기 프레임은 xl 에서 flex-1. 아래 `FileRow`(아이콘 타일·이름·크기×해상도·상태 pill: 준비 완료/HEIC 변환됨/편집 적용됨/최적화 완료). **"최적화 결과" `ResultStats`**: 3×2 수치 카드 — 현재 크기 / 최적화 후 / 절감률(초록), 파일 형식(JPG → JPG + 배지) / 해상도(+ 원본 배지) / 품질(%·무손실·자동), 하단 상태 문구(목표 이내·초과 경고·오류). 병합 모드는 같은 틀로 합계/병합 후/절감률, 병합 출력/구성/목표. `MergeSummary` 삭제(ResultStats 가 대체, `data-testid="merge-summary"` 유지). ActionBar 데스크톱 = 요약 한 줄 + 패널 폭 hero 버튼(lg). 빈 미리보기는 아이콘 + 안내.
+- **상태 바(StatusBar, 데스크톱):** 왼쪽 "N장 준비됨 · 변환 중" + 선택 파일 칩(이름·크기·제거), 오른쪽 판정 점 + 라벨(최적화 완료/초과 등) + "절감 용량 132 KB (1%)".
+- **에디터 툴바:** 단색 박스·모자이크·크롭·선택 토글에 아이콘, 회전은 "왼쪽 90°/오른쪽 90°", 모두 지우기 휴지통. 취소는 secondary.
+- **결정:** (1) 세션 13 의 "밝은 파랑 반대·hero 초록 그라데이션" 은 이 시안으로 **대체**됨 — 사용자가 시안을 직접 지정. (2) 시안의 계정 UI 는 넣지 않는다(위). (3) "다시 최적화" 버튼은 넣지 않았다 — 설정·편집이 바뀌면 결과가 자동 무효화되어 쓸 일이 없다. (4) 앱 셸은 xl(1280+)만. lg 는 미리보기가 두 열 아래로 가서 셸 높이에 안 들어간다.
+- **문제/해결:** (1) 세로 flex 자식 `main` 에 `flex-1` 이 남아 `xl:h-[…]` 가 무시됨(flex-basis 가 height 를 덮음) → `xl:flex-none`. (2) 드롭존 안 텍스트 div 의 `flex-1` 이 세로 flex 에서 늘어나 버튼이 바닥으로 → compact 에서만 flex-1. (3) 좁은 사이드바에서 출력 방식 칩이 두 줄로 → 아이콘 제거 + `whitespace-nowrap`. (4) layout 과 page 양쪽에 푸터가 들어가 중복 → 페이지만.
+- **검증:** 스크린샷(cdp-shots.mjs, 1600×1000 / 390×844) 로 시안과 비교 — 빈 상태·파일 3장·최적화 완료·세로 병합·에디터·모바일 전체. 스모크 6종을 새 라벨(가리기/크롭/회전·편집/모자이크/오른쪽 90°/세로 병합/용량 확인/제출처 프리셋)에 맞춰 갱신하고 전부 통과: 스튜디오 29 / 에디터 30 / 병합 37 / 병합 중 편집 23 / 모바일 15 / 확대 53. `tsc`/`lint`/`build` 통과.
+- **다음:** SEO(OG 이미지는 새 브랜드 파랑으로). 사용자 실기기에서 새 UI 확인. 사이드바 프리셋 부제가 좁아 형식 목록은 툴팁(`title`)으로만.
 
 ### 2026-09-10 · 세션 19 · 에디터 확대·축소 (+/−, 맞춤, 이동 모드) — 모바일에서 세밀한 가리기·크롭
 - **배경:** 사용자 보고 "모바일에서 크롭·가리기 할 때 이미지가 너무 작아 컨트롤이 어렵다". 원인은 둘: (1) 확대 수단이 없었다. (2) 모바일 편집 영역이 `50vh`(422px) 인데 도구 줄이 3~4줄로 접혀 실제 캔버스는 150px 남짓이었다.
