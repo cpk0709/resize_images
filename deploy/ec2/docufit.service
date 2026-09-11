@@ -1,7 +1,7 @@
 # DocuFit Next.js 서버 (standalone). setup.sh 가 /etc/systemd/system/docufit.service 로 설치한다.
 # - /srv/docufit/current → releases/<sha> 심볼릭 링크. release.sh 가 링크를 바꾸고 restart 한다.
 # - 환경변수는 /srv/docufit/shared/.env (root 600). Node 프로세스는 권한 없는 docufit 계정으로 돈다.
-# - 127.0.0.1:3000 에만 바인딩. 외부 노출은 nginx 가 담당한다.
+# - 127.0.0.1:3100 에만 바인딩 (deploy/nginx/docufit.conf 의 proxy_pass 와 같은 포트, Docker 변형과 통일). 외부 노출은 nginx 가 담당한다.
 [Unit]
 Description=DocuFit (Next.js standalone)
 After=network.target
@@ -15,7 +15,7 @@ Group=docufit
 WorkingDirectory=/srv/docufit/current
 EnvironmentFile=/srv/docufit/shared/.env
 Environment=NODE_ENV=production
-Environment=PORT=3000
+Environment=PORT=3100
 Environment=HOSTNAME=127.0.0.1
 Environment=NEXT_TELEMETRY_DISABLED=1
 ExecStart=/usr/bin/node server.js

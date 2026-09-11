@@ -1,0 +1,21 @@
+# Docker 빌드 컨텍스트에서 제외. 비밀·산출물·로컬 전용을 이미지에 넣지 않는다.
+.git
+.github
+.claude
+node_modules
+.next
+out
+src/generated
+docs
+deploy
+*.md
+!README.md
+.env
+.env.*
+!.env.example
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+Dockerfile
+.dockerignore
+vercel.json

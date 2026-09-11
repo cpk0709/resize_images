@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# DocuFit EC2 초기 설정 (Ubuntu 24.04 LTS, x86_64). 새 인스턴스에서 **한 번만** root 권한으로 실행한다.
+# DocuFit **전용 인스턴스**용 초기 설정 (Ubuntu 24.04 LTS, x86_64, systemd + 호스트 Node). 새 인스턴스에서 한 번만 root 로 실행한다.
+# 이미 Docker·nginx 가 돌고 있는 공유 서버에는 이 스크립트가 아니라 deploy/docker/setup-shared.sh 를 쓴다 (현재 운영 서버가 그 경우).
 #
 #   sudo bash deploy/ec2/setup.sh --domain docufit.example.com --email you@example.com
 #   sudo bash deploy/ec2/setup.sh                 # 도메인이 아직 없으면: HTTP 만, 나중에 certbot 만 따로
@@ -8,7 +9,7 @@
 #   1. 패키지: nginx, ufw, Node.js 22 (NodeSource)
 #   2. 실행 계정 docufit(로그인 불가) 과 디렉터리 /srv/docufit/{releases,shared,bin}
 #   3. /srv/docufit/shared/.env (없을 때만 생성, CRON_SECRET 자동 생성, root 600)
-#   4. systemd 서비스 docufit (node server.js, 127.0.0.1:3000), cleanup 타이머(설치만, 활성화는 Phase 3 때)
+#   4. systemd 서비스 docufit (node server.js, 127.0.0.1:3100), cleanup 타이머(설치만, 활성화는 Phase 3 때)
 #   5. nginx 리버스 프록시 (+ --domain 이 있으면 certbot 으로 HTTPS 와 HTTP→HTTPS 리다이렉트)
 #   6. ufw: SSH, 80, 443 만 허용
 #   7. 배포 계정(ubuntu)이 비밀번호 없이 `systemctl restart docufit` 만 할 수 있게 sudoers 추가
@@ -134,4 +135,6 @@ cat <<EOF
      공개키 등록(이 서버):     echo "<docufit-deploy.pub 내용>" >> /home/$DEPLOY_USER/.ssh/authorized_keys
   3. main 에 push 하면 .github/workflows/deploy-ec2.yml 이 빌드 → 업로드 → 재시작한다.
   4. 확인: curl -sI http${DOMAIN:+s}://${DOMAIN:-<IP>}/ | grep -i -E "cache-control|x-frame|server"
+  ※ 이 변형(systemd)은 tar 릴리스를 받는다. 현재 .github/workflows/deploy-ec2.yml 은 Docker 변형(deploy/docker) 기준이므로
+    전용 인스턴스로 갈 때는 워크플로의 "Release on server" 단계를 tar+scp+release.sh 로 바꿔야 한다 (HISTORY 세션 21 참고).
 EOF

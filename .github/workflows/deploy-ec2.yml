@@ -1,10 +1,14 @@
-# EC2 배포. main 에 push 될 때마다 standalone 빌드를 만들어 SSH 로 올리고 서비스를 교체한다.
+# EC2(공유 Docker 호스트) 배포. main 에 push 될 때마다 이미지를 빌드해 GHCR 에 올리고, SSH 로 서버의 컨테이너를 교체한다.
 #
-# 필요한 저장소 Secrets (Settings → Secrets and variables → Actions):
-#   EC2_HOST     서버 탄력적 IP 또는 도메인
-#   EC2_USER     SSH 계정 (setup.sh 의 DEPLOY_USER, 기본 ubuntu)
+# 저장소 Secrets (Settings → Secrets and variables → Actions):
+#   EC2_HOST     서버 탄력적 IP 또는 도메인 (SSH 접속 대상)
+#   EC2_USER     SSH 계정 (setup-shared.sh 의 DEPLOY_USER, 기본 ubuntu — docker 그룹 필수)
 #   EC2_SSH_KEY  배포용 개인키 (ed25519) 전체 내용
-# 서버 쪽 준비는 deploy/ec2/setup.sh 를 한 번 실행하면 끝난다 (README "배포 (EC2)").
+# 저장소 Variables:
+#   EC2_DEPLOY_ENABLED  "true" 일 때만 실행 (서버 준비 전에는 조용히 건너뛴다)
+#   DEPLOY_URL          배포 후 헤더를 확인할 주소. 예: http://3.34.61.39:8080/  또는  https://docufit.kr/
+# 서버 쪽 준비는 deploy/docker/setup-shared.sh 를 한 번 실행하면 끝난다 (README "배포 (EC2, 정식)").
+# GHCR 패키지가 private 이면 서버에서 pull 이 실패한다 — 첫 배포 뒤 패키지를 Public 으로 바꾸거나 서버에서 docker login.
 name: Deploy to EC2
 
 on:
@@ -14,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 # 배포는 순서대로. 진행 중인 배포를 취소하면 반쯤 올라간 상태가 될 수 있어 취소하지 않는다.
 concurrency:
@@ -21,13 +26,13 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/docufit
   # postinstall 의 `prisma generate` 가 prisma7.config.ts 를 읽을 때 필요한 형식상 값. 실제 DB 에 접속하지 않는다.
   DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # 시크릿이 아직 없으면(서버 준비 전) 조용히 건너뛴다.
     if: ${{ vars.EC2_DEPLOY_ENABLED == 'true' }}
     steps:
       - uses: actions/checkout@v4
@@ -43,11 +48,26 @@ jobs:
       - name: Type check & lint
         run: npm run typecheck && npm run lint
 
-      - name: Build standalone
-        run: npm run build:standalone
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Pack
-        run: tar -czf release.tgz -C .next/standalone .
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Configure SSH
         env:
@@ -59,24 +79,21 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Upload & release
+      - name: Release on server
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
           SHA: ${{ github.sha }}
         run: |
           SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes $EC2_USER@$EC2_HOST"
-          scp -i ~/.ssh/deploy_key release.tgz "$EC2_USER@$EC2_HOST:/srv/docufit/releases/incoming-$SHA.tgz"
-          # release.sh 가 바뀌었을 수 있으니 매번 최신 것을 올린다
-          scp -i ~/.ssh/deploy_key deploy/ec2/release.sh "$EC2_USER@$EC2_HOST:/srv/docufit/bin/release.sh"
-          $SSH "chmod +x /srv/docufit/bin/release.sh && /srv/docufit/bin/release.sh /srv/docufit/releases/incoming-$SHA.tgz $SHA"
+          # compose 정의와 릴리스 스크립트가 바뀌었을 수 있으니 매번 최신 것을 올린다
+          scp -i ~/.ssh/deploy_key deploy/docker/compose.yml deploy/docker/release.sh "$EC2_USER@$EC2_HOST:/srv/docufit/"
+          $SSH "chmod +x /srv/docufit/release.sh && /srv/docufit/release.sh $SHA"
 
       - name: Verify headers
         env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
+          URL: ${{ vars.DEPLOY_URL || format('http://{0}:8080/', secrets.EC2_HOST) }}
         run: |
-          # 도메인·HTTPS 가 아직 없으면 HTTP 로 확인한다. no-store 와 nosniff 가 붙어야 한다.
-          URL="http://$EC2_HOST/"
           curl -sSI --max-time 20 "$URL" | tee headers.txt
           grep -qi "cache-control: no-store" headers.txt
           grep -qi "x-content-type-options: nosniff" headers.txt

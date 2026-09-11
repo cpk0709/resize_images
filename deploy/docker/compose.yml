@@ -1,0 +1,37 @@
+# DocuFit 컨테이너 정의. 서버의 /srv/docufit/compose.yml 로 복사되어 쓰인다 (setup-shared.sh, 배포 워크플로가 매번 갱신).
+#
+# - 이미지 태그는 같은 폴더의 .env 에 IMAGE_TAG=<커밋 해시> 로 들어간다 (release.sh 가 쓴다). 앱 환경변수는 app.env.
+# - 127.0.0.1:3100 에만 바인딩. 외부 노출은 호스트 nginx 가 담당한다 (기존 앱들과 같은 방식).
+# - 파일을 서버에 두지 않는 앱이므로 루트 파일시스템을 읽기 전용으로 두고, 쓰기가 필요한 곳만 tmpfs.
+name: docufit
+
+services:
+  app:
+    image: ghcr.io/cpk0709/docufit:${IMAGE_TAG:-latest}
+    container_name: docufit
+    restart: unless-stopped
+    env_file:
+      - ./app.env
+    ports:
+      - "127.0.0.1:3100:3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 768m
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

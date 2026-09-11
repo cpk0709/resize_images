@@ -68,27 +68,28 @@ npm run build:pages      # 로컬에서 같은 빌드 재현 → out/
 
 ## 배포 (EC2, 정식)
 
-Ubuntu 24.04 (x86_64) EC2 한 대에 Node 서버(standalone) + nginx(TLS) 로 운영한다. 빌드는 GitHub Actions 가 하고 서버에는
-Node 만 있으면 된다. 현재 버전(Phase 2)은 **브라우저 전용**이라 DB·S3 없이 동작한다.
+운영 서버는 이미 다른 앱들이 Docker 로 돌고 **호스트 nginx** 가 80/443 을 이름 기반 가상호스트로 나눠 주는 **공유 EC2**(Ubuntu 24.04
+x86_64) 다. DocuFit 도 컨테이너로 올리고(`127.0.0.1:3100`) nginx 에 사이트 하나만 추가한다. 이미지는 GitHub Actions 가 빌드해
+GHCR(`ghcr.io/cpk0709/docufit`)에 올리고 서버는 pull 만 한다. 현재 버전(Phase 2)은 **브라우저 전용**이라 DB·S3 없이 동작한다.
 
-**권장 사양**: 서울(ap-northeast-2), t3.small(2GB) 또는 무료 티어 t3.micro, Ubuntu Server 24.04 LTS **x86_64**(빌드 러너와 같은
-아키텍처여야 네이티브 모듈이 맞는다), gp3 20GB, 탄력적 IP, 보안 그룹 22(내 IP만)·80·443.
-
-1. **서버 초기 설정** (인스턴스에 SSH 접속 후 한 번):
+1. **서버 초기 설정** (SSH 접속 후 한 번. 기존 서비스·nginx.conf·ufw 는 건드리지 않는다):
    ```bash
    git clone https://github.com/cpk0709/resize_images.git && cd resize_images
-   sudo bash deploy/ec2/setup.sh                                                # 도메인이 아직 없으면 HTTP 만
-   sudo bash deploy/ec2/setup.sh --domain docufit.kr --email me@example.com    # 도메인 A 레코드가 이 IP 를 가리킨 뒤: HTTPS 까지
+   sudo bash deploy/docker/setup-shared.sh                                              # 도메인 전: 8080 포트로 HTTP 임시 공개
+   sudo bash deploy/docker/setup-shared.sh --domain docufit.kr --email me@example.com  # 도메인 A 레코드 연결 뒤: 80/443 + certbot
    ```
-   nginx·ufw·Node 22·실행 계정(docufit)·`/srv/docufit/{releases,shared,bin}`·systemd 서비스·`/srv/docufit/shared/.env`(CRON_SECRET 자동 생성) 을 만든다. 다시 실행해도 `.env` 는 덮어쓰지 않는다.
-2. **배포용 SSH 키**: 로컬 PC 에서 `ssh-keygen -t ed25519 -f docufit-deploy -N ""` → `docufit-deploy.pub` 내용을 서버의 `/home/ubuntu/.ssh/authorized_keys` 에 한 줄 추가.
-3. **GitHub 저장소 설정** (Settings → Secrets and variables → Actions): Secrets `EC2_HOST`(탄력적 IP 또는 도메인), `EC2_USER`(`ubuntu`), `EC2_SSH_KEY`(개인키 `docufit-deploy` 전체 내용). Variables `EC2_DEPLOY_ENABLED` = `true`.
-4. 이후 `main` 에 push 하면 `.github/workflows/deploy-ec2.yml` 이 `npm run build:standalone` → tar → scp → `release.sh`(풀기 · `current` 심볼릭 링크 교체 · 재시작 · 헬스 체크 · 실패 시 이전 릴리스로 롤백) → 응답 헤더 확인을 수행한다.
+   `/srv/docufit/{compose.yml,app.env,.env,release.sh}` 와 `/etc/nginx/sites-enabled/docufit` 을 만든다. `app.env`(CRON_SECRET 자동 생성)는 다시 실행해도 덮어쓰지 않는다. 8080 모드에서는 ufw 에 8080 만 허용하고, 도메인 모드로 다시 실행하면 그 규칙을 닫는다.
+2. **배포용 SSH 키**: 로컬 PC 에서 `ssh-keygen -t ed25519 -f docufit-deploy -N ""` → `docufit-deploy.pub` 내용을 서버의 `/home/ubuntu/.ssh/authorized_keys` 에 한 줄 추가. (`ubuntu` 는 docker 그룹이어야 한다.)
+3. **GitHub 저장소 설정** (Settings → Secrets and variables → Actions): Secrets `EC2_HOST`(탄력적 IP), `EC2_USER`(`ubuntu`), `EC2_SSH_KEY`(개인키 `docufit-deploy` 전체). Variables `EC2_DEPLOY_ENABLED`=`true`, `DEPLOY_URL`=`http://<IP>:8080/`(도메인 뒤 `https://<도메인>/`).
+4. **보안 그룹**: 8080(임시) 또는 80·443 인바운드 허용.
+5. `main` 에 push(또는 Actions 에서 Run workflow)하면 `.github/workflows/deploy-ec2.yml` 이 typecheck·lint → 이미지 빌드·GHCR push → `compose.yml`·`release.sh` scp → `release.sh <sha>`(pull · 태그 교체 · up · 헬스 체크 · 실패 시 이전 태그로 롤백 · 오래된 이미지 정리) → `DEPLOY_URL` 응답 헤더 확인을 수행한다.
+6. **첫 배포 뒤 한 번**: GHCR 패키지 `docufit` 을 Public 으로 바꾼다(GitHub 프로필 → Packages → docufit → Package settings → Change visibility). private 이면 서버의 `docker pull` 이 실패한다. 대신 서버에서 `docker login ghcr.io` 를 해 두어도 된다.
 
-- `npm run build:standalone` = `next build`(output standalone) + `scripts/package-standalone.mjs`. 스크립트가 `.next/static`·`public` 을 넣고 빌드 머신의 `.env*` 를 제거한다. 서버 환경변수의 유일한 출처는 `/srv/docufit/shared/.env`(systemd `EnvironmentFile`, root 600).
-- 캐시 정책은 Next 가 정한다: 페이지·API 는 `Cache-Control: no-store`, `/_next/static`(해시 자산)은 1년 `immutable`. 확인: `curl -sI https://<도메인>/ | grep -i cache-control`.
-- 서버 처리 옵션(Phase 3)을 켤 때: `.env` 에 DB·S3 를 채우고 `sudo systemctl enable --now docufit-cleanup.timer`(10분마다 파기 크론 호출).
-- 운영: `sudo systemctl status docufit`, `journalctl -u docufit -f`, nginx 로그 `/var/log/nginx/docufit.*.log`. 릴리스는 `/srv/docufit/releases/<sha>`(최근 3개 유지).
+- `Dockerfile` 은 deps(`npm ci` + prisma generate) → build(`npm run build:standalone`) → runtime(Node 만, 비루트 `node`) 3단계. `package-standalone.mjs` 가 `.next/static` 을 넣고 빌드 머신의 `.env*` 를 제거하므로 이미지에 비밀이 없다. 컨테이너 환경변수의 유일한 출처는 `/srv/docufit/app.env`.
+- 캐시 정책은 Next 가 정한다: 페이지·API 는 `Cache-Control: no-store`, `/_next/static`(해시 자산)은 1년 `immutable`. 확인: `curl -sI <DEPLOY_URL> | grep -i cache-control`.
+- 서버 처리 옵션(Phase 3)을 켤 때: `app.env` 에 DB·S3 를 채우고 호스트 크론(또는 systemd 타이머)으로 10분마다 `curl -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3100/api/cron/cleanup`.
+- 운영: `docker ps`, `docker logs -f docufit`, `cat /srv/docufit/.env`(현재 태그), nginx 로그 `/var/log/nginx/docufit.*.log`. 수동 롤백은 `/srv/docufit/release.sh <이전 sha>`.
+- 전용 인스턴스(systemd + 호스트 Node)로 옮길 때의 변형은 `deploy/ec2/` 에 있다(현재 워크플로는 쓰지 않음).
 - GitHub Pages 배포(`deploy-pages.yml`)는 도메인 전환 전까지 스테이징으로 함께 유지한다. Vercel 은 쓰지 않는다(`vercel.json` 은 참고용).
 
 ## 검증

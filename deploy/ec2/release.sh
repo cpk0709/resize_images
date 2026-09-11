@@ -5,7 +5,7 @@
 #     tarball : .next/standalone 을 통째로 묶은 .tgz (package-standalone.mjs 결과)
 #     sha     : 릴리스 폴더 이름으로 쓸 커밋 해시
 #
-# 절차: releases/<sha> 에 풀기 → current 심볼릭 링크 교체 → systemctl restart → 127.0.0.1:3000 헬스 체크(최대 30초)
+# 절차: releases/<sha> 에 풀기 → current 심볼릭 링크 교체 → systemctl restart → 127.0.0.1:3100 헬스 체크(최대 30초)
 #       → 실패하면 이전 릴리스로 링크를 되돌리고 다시 시작한 뒤 실패 종료 → 성공하면 오래된 릴리스 정리(최근 3개 유지)
 set -euo pipefail
 
@@ -15,7 +15,7 @@ SHA="${2:?커밋 해시가 필요합니다}"
 RELEASES="$APP_ROOT/releases"
 CURRENT="$APP_ROOT/current"
 TARGET="$RELEASES/$SHA"
-HEALTH_URL="http://127.0.0.1:3000/"
+HEALTH_URL="http://127.0.0.1:3100/"
 
 log() { echo "[release] $*"; }
 

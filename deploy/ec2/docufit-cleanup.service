@@ -9,4 +9,4 @@ Requires=docufit.service
 [Service]
 Type=oneshot
 EnvironmentFile=/srv/docufit/shared/.env
-ExecStart=/usr/bin/curl -fsS --max-time 60 -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/cleanup
+ExecStart=/usr/bin/curl -fsS --max-time 60 -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3100/api/cron/cleanup
