@@ -62,6 +62,8 @@ chmod 600 "$APP_ROOT/app.env"
 chown "$DEPLOY_USER:$DEPLOY_USER" "$APP_ROOT"
 
 echo "==> 3/4 nginx 사이트"
+# 로그 형식 선언(http 컨텍스트). 기존 사이트에는 영향 없음 — 이름 붙은 형식을 하나 추가할 뿐이다.
+install -m 644 "$HERE/../nginx/docufit-logformat.conf" /etc/nginx/conf.d/docufit-logformat.conf
 if [[ -n "$DOMAIN" ]]; then
   sed "s/__SERVER_NAME__/$DOMAIN/g" "$HERE/../nginx/docufit.conf" >/etc/nginx/sites-available/docufit
   # 임시 8080 모드에서 넘어왔다면 ufw 규칙을 닫는다

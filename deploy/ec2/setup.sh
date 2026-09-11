@@ -87,6 +87,7 @@ systemctl enable docufit >/dev/null
 
 echo "==> 5/7 nginx"
 SERVER_NAME="${DOMAIN:-_}"
+install -m 644 "$HERE/../nginx/docufit-logformat.conf" /etc/nginx/conf.d/docufit-logformat.conf
 sed "s/__SERVER_NAME__/$SERVER_NAME/g" "$HERE/../nginx/docufit.conf" >/etc/nginx/sites-available/docufit
 ln -sfn /etc/nginx/sites-available/docufit /etc/nginx/sites-enabled/docufit
 rm -f /etc/nginx/sites-enabled/default
